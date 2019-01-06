@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Storm,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="最近将公司的在线业务迁移到Storm集群上，上线后遇到低峰期CPU耗费严重的情况。在解决问题的过程中深入了解了storm的内部实现原理，并且解决了一个storm0.9-0.10版本一直存在的严重bug，目前代码已经合并到了storm新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。 背景首先简单介绍一下Storm，熟悉的同学可以直接跳过这段。 Storm是Twi">
+<meta name="keywords" content="Storm">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Storm在线业务实践-集群空闲CPU飙高问题排查">
+<meta property="og:url" content="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/index.html">
+<meta property="og:site_name" content="Rick&#39;s lab">
+<meta property="og:description" content="最近将公司的在线业务迁移到Storm集群上，上线后遇到低峰期CPU耗费严重的情况。在解决问题的过程中深入了解了storm的内部实现原理，并且解决了一个storm0.9-0.10版本一直存在的严重bug，目前代码已经合并到了storm新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。 背景首先简单介绍一下Storm，熟悉的同学可以直接跳过这段。 Storm是Twi">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://xingyusu.com/wp-content/uploads/2015/07/storm.gif">
+<meta property="og:image" content="http://xingyusu.com/wp-content/uploads/2015/07/storm-messaging.png">
+<meta property="og:updated_time" content="2019-01-06T05:20:35.852Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Storm在线业务实践-集群空闲CPU飙高问题排查">
+<meta name="twitter:description" content="最近将公司的在线业务迁移到Storm集群上，上线后遇到低峰期CPU耗费严重的情况。在解决问题的过程中深入了解了storm的内部实现原理，并且解决了一个storm0.9-0.10版本一直存在的严重bug，目前代码已经合并到了storm新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。 背景首先简单介绍一下Storm，熟悉的同学可以直接跳过这段。 Storm是Twi">
+<meta name="twitter:image" content="http://xingyusu.com/wp-content/uploads/2015/07/storm.gif">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/">
+
+
+
+
+
+  <title>Storm在线业务实践-集群空闲CPU飙高问题排查 | Rick's lab</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="default">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Rick's lab</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">c-137</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Xingyu Su">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Rick's lab">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Storm在线业务实践-集群空闲CPU飙高问题排查</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2015-07-18T17:51:53+08:00">
+                2015-07-18
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">In</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Tech/" itemprop="url" rel="index">
+                    <span itemprop="name">Tech</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>最近将公司的在线业务迁移到Storm集群上，上线后遇到低峰期CPU耗费严重的情况。在解决问题的过程中深入了解了storm的内部实现原理，并且解决了一个storm0.9-0.10版本一直存在的严重bug，目前代码已经合并到了storm新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。</p>
+<h3 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h3><p>首先简单介绍一下Storm，熟悉的同学可以直接跳过这段。 Storm是Twitter开源的一个大数据处理框架，专注于流式数据的处理。Storm通过创建拓扑结构（Topology）来转换数据流。和Hadoop的作业（Job）不同，Topology会持续转换数据，除非被集群关闭。 下图是一个简单的Storm Topology结构图。 <img src="http://xingyusu.com/wp-content/uploads/2015/07/storm.gif" alt="topology"> 可以看出Topology是由不同组件（Component）串/并联形成的有向图。数据元组（Tuple）会在Component之间通过数据流的形式进行有向传递。Component有两种</p>
+<ul>
+<li>Spout：Tuple来源节点，持续不断的产生Tuple，形成数据流</li>
+<li>Bolt：Tuple处理节点，处理收到的Tuple，如果有需要，也可以生成新的Tuple传递到其他Bolt</li>
+</ul>
+<p>目前业界主要在离线或者对实时性要求不高业务中使用Storm。随着Storm版本的更迭，可靠性和实时性在逐渐增强，已经有运行在线业务的能力。因此我们尝试将一些实时性要求在百毫秒级的在线业务迁入Storm集群。</p>
+<h3 id="现象"><a href="#现象" class="headerlink" title="现象"></a>现象</h3><ol>
+<li>某次高峰时，Storm上的一个业务拓扑频繁出现消息处理延迟。延时达到了10s甚至更高。查看高峰时的物理机指标监控，CPU、内存和IO都有很大的余量。判断是随着业务增长，服务流量逐渐增加，某个Bolt之前设置的并行度不够，导致消息堆积了。</li>
+<li>临时增加该Bolt并行度，解决了延迟的问题，但是第二天的低峰期，服务突然报警，CPU负载过高，达到了100%。</li>
+</ol>
+<h3 id="排查"><a href="#排查" class="headerlink" title="排查"></a>排查</h3><ol>
+<li><p>用Top看了下CPU占用，系统调用占用了70%左右。再用<a href="https://github.com/qdaxb/wtool" target="_blank" rel="noopener">wtool</a>对Storm的工作进程进行分析，找到了CPU占用最高的线程</p>
+<pre><code>java.lang.Thread.State: TIMED_WAITING (parking)
+        at sun.misc.Unsafe.park(Native Method)
+        - parking to wait for  &lt;0x0000000640a248f8&gt; (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+        at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:215)
+        at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2163)
+        at com.lmax.disruptor.BlockingWaitStrategy.waitFor(BlockingWaitStrategy.java:87)
+        at com.lmax.disruptor.ProcessingSequenceBarrier.waitFor(ProcessingSequenceBarrier.java:54)
+        at backtype.storm.utils.DisruptorQueue.consumeBatchWhenAvailable(DisruptorQueue.java:97)
+        at backtype.storm.disruptor$consume_batch_when_available.invoke(disruptor.clj:80)
+        at backtype.storm.daemon.executor$fn__3441$fn__3453$fn__3500.invoke(executor.clj:748)
+        at backtype.storm.util$async_loop$fn__464.invoke(util.clj:463)
+        at clojure.lang.AFn.run(AFn.java:24)
+        at java.lang.Thread.run(Thread.java:745)
+</code></pre></li>
+</ol>
+<pre><code>我们可以看到这些线程都在信号量上等待。调用的来源是disruptor$consume\_batch\_when_available。
+</code></pre><ol start="2">
+<li><p>disruptor是Storm内部消息队列的封装。所以先了解了一下Storm内部的消息传输机制。<img src="http://xingyusu.com/wp-content/uploads/2015/07/storm-messaging.png" alt="Storm内部消息传输机制">（图片来源<a href="http://www.michael-noll.com/blog/2013/06/21/understanding-storm-internal-message-buffers/" target="_blank" rel="noopener">Understanding the Internal Message Buffers of Storm</a>）Storm的工作节点称为Worker（其实就是一个JVM进程）。不同Worker之间通过Netty（旧版Storm使用ZeroMQ）进行通讯。每个Worker内部包含一组Executor。Strom会为拓扑中的每个Component都分配一个Executor。在实际的数据处理流程中，数据以消息的形式在Executor之间流转。Executor会循环调用绑定的Component的处理方法来处理收到的消息。 Executor之间的消息传输使用队列作为消息管道。Storm会给每个Executor分配两个队列和两个处理线程。</p>
+<ul>
+<li>工作线程：读取接收队列，对消息进行处理，如果产生新的消息，会写入发送队列</li>
+<li>发送线程：读取发送队列，将消息发送其他Executor</li>
+</ul>
+<p>当Executor的发送线程发送消息时，会判断目标Executor是否在同一Worker内，如果是，则直接将消息写入目标Executor的接收队列，如果不是，则将消息写入Worker的传输队列，通过网络发送。 Executor工作/发送线程读取队列的代码如下，这里会循环调用consume-batch-when-available读取队列中的消息，并对消息进行处理。</p>
+<pre><code>(async-loop
+  (fn []
+    ...
+    (disruptor/consume-batch-when-available receive-queue event-handler)            
+    ...
+    ))
+</code></pre></li>
+</ol>
+<ol start="3">
+<li><p>我们再来看一下consume_batch_when_available这个函数里做了什么。</p>
+<pre><code>(defn consume-batch-when-available
+  [^DisruptorQueue queue handler]
+  (.consumeBatchWhenAvailable queue handler))
+</code></pre></li>
+</ol>
+<pre><code>前面提到Storm使用队列作为消息管道。Storm作为流式大数据处理框架，对消息传输的性能很敏感，因此使用了高效内存队列Disruptor Queue作为消息队列。 ![storm-simple](http://xingyusu.com/wp-content/uploads/2015/07/storm-simple.png) Disruptor Queue是LMAX开源的一个无锁内存队列。内部实现如下。 ![Disruptor queue](http://xingyusu.com/wp-content/uploads/2015/07/Models.png)（图片来源[Disruptor queue Introduction](https://github.com/LMAX-Exchange/disruptor/wiki/Introduction)） Disruptor Queue通过Sequencer来管理队列，Sequencer内部使用RingBuffer存储消息。RingBuffer中消息的位置使用Sequence表示。队列的生产消费过程如下
+
+*   Sequencer使用一个Cursor来保存写入位置。
+*   每个Consumer都会维护一个消费位置，并注册到Sequencer。
+*   Consumer通过SequenceBarrier和Sequencer进行交互。Consumer每次消费时，SequenceBarrier会比较消费位置和Cursor来判断是否有可用消息：如果没有，**会按照设定的策略等待消息**；如果有，则读取消息，修改消费位置。
+*   Producer在写入前会查看所有消费者的消费位置，在有可用位置时会写入消息，更新Cursor。
+
+查看DisruptorQueue.consumeBatchWhenAvailable实现如下
+
+    final long nextSequence = _consumer.get() + 1;
+    final long availableSequence = _barrier.waitFor(nextSequence, 10, TimeUnit.MILLISECONDS);
+    if (availableSequence &gt;= nextSequence) {
+        consumeBatchToCursor(availableSequence, handler);
+    }
+
+
+继续查看_barrier.waitFor方法
+
+    public long waitFor(final long sequence, final long timeout, final TimeUnit units) throws AlertException, InterruptedException {
+        checkAlert();
+        return waitStrategy.waitFor(sequence, cursorSequence, dependentSequences, this, timeout, units);
+    }
+
+
+Disruptor Queue为消费者提供了若干种消息等待策略
+
+*   BlockingWaitStrategy：阻塞等待，CPU占用小，但是会切换线程，延迟较高
+*   BusySpinWaitStrategy：自旋等待，CPU占用高，但是无需切换线程，延迟低
+*   YieldingWaitStrategy：先自旋等待，然后使用Thread.yield()唤醒其他线程，CPU占用和延迟比较均衡
+*   SleepingWaitStrategy：先自旋，然后Thread.yield()，最后调用LockSupport.parkNanos(1L)，CPU占用和延迟比较均衡
+
+Storm的默认等待策略为BlockingWaitStrategy。BlockingWaitStrategy的waitFor函数实现如下
+
+    if ((availableSequence = cursor.get()) &lt; sequence) {
+            lock.lock();
+            try {
+                ++numWaiters;
+                while ((availableSequence = cursor.get()) &lt; sequence) {
+                    barrier.checkAlert();
+
+                    if (!processorNotifyCondition.await(timeout, sourceUnit)) {
+                        break;
+                    }
+                }
+            }
+            finally {
+                --numWaiters;
+                lock.unlock();
+            }
+    }
+
+
+BlockingWaitStrategy内部使用信号量来阻塞Consumer，当await超时后，Consumer线程会被自动唤醒，继续循环查询可用消息。
+</code></pre><ol start="4">
+<li>而DisruptorQueue.consumeBatchWhenAvailable方法中可以看到，Storm此处设置超时为10ms。推测在没有消息或者消息量较少时，Executor在消费队列时会被阻塞，由于超时时间很短，工作线程会频繁超时，consumeBatchWhenAvailable会被频繁调用，导致CPU占用飙高。尝试将10ms修改成100ms，编译Storm后重新部署集群，使用Storm的demo拓扑，将bolt并发度调到1000，修改spout代码为10s发一条消息。经测试CPU占用大幅减少。再将100ms改成1s，测试CPU占用基本降为零。</li>
+<li><p>但是随着调高超时，测试时并没有发现消息处理有延时。继续查看BlockingWaitStrategy代码，发现Disruptor Queu的Producer在写入消息后会唤醒等待的Consumer。</p>
+<pre><code>if (0 != numWaiters)
+{
+    lock.lock();
+    try
+    {
+        processorNotifyCondition.signalAll();
+    }
+    finally
+    {
+        lock.unlock();
+    }
+}
+</code></pre></li>
+</ol>
+<pre><code>这样，Storm的10ms超时就很奇怪了，没有减少消息延时，反而增加了系统负载。带着这个疑问查看代码的上下文，发现在构造DisruptorQueue对象时有这么一句注释
+
+    ;; :block strategy requires using a timeout on waitFor (implemented in DisruptorQueue), 
+            as sometimes the consumer stays blocked even when there&apos;s an item on the queue.
+    (defnk disruptor-queue
+        [^String queue-name buffer-size :claim-strategy :multi-threaded :wait-strategy :block]
+        (DisruptorQueue. queue-name
+                    ((CLAIM-STRATEGY claim-strategy) buffer-size)
+                    (mk-wait-strategy wait-strategy)))
+
+
+Storm使用的Disruptor Queue版本为2.10.1。查看Disruptor Queue的change log，发现该版本的BlockingWaitStrategy有潜在的并发问题，可能导致某条消息在写入时没有唤醒等待的消费者。
+
+&gt; 2.10.2 Released (21-Aug-2012)
+&gt; 
+&gt; *   Bug fix, potential race condition in BlockingWaitStrategy.
+&gt; *   Bug fix set initial SequenceGroup value to -1 (Issue #27).
+&gt; *   Deprecate timeout methods that will be removed in version 3.
+
+因此Storm使用了短超时，这样在出现并发问题时，没有被唤醒的消费方也会很快因为超时重新查询可用消息，防止出现消息延时。 这样如果直接修改超时到1000ms，一旦出现并发问题，最坏情况下消息会延迟1000ms。在权衡性能和延时之后，我们在Storm的配置文件中增加配置项来修改超时参数。这样使用者可以自己选择保证低延时还是低CPU占用率。
+</code></pre><ol start="6">
+<li>就BlockingWaitStrategy的潜在并发问题咨询了Disruptor Queue的作者，得知2.10.4版本已经修复了这个并发问题（<a href="https://github.com/LMAX-Exchange/disruptor/issues/119" target="_blank" rel="noopener">Race condition in 2.10.1 release</a> ）。将Storm依赖升级到此版本。但是对Disruptor Queue的2.10.1做了并发测试，无法复现这个并发问题，因此也无法确定2.10.4是否彻底修复。谨慎起见，在升级依赖的同时保留了之前的超时配置项，并将默认超时调整为1000ms。经测试，在集群空闲时CPU占用正常，并且压测也没有出现消息延时。</li>
+</ol>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
+<li>关于集群空闲CPU反而飙高的问题，已经向Storm社区提交PR并且已被接受<a href="https://github.com/apache/storm/pull/630" target="_blank" rel="noopener">[STORM-935] Update Disruptor queue version to 2.10.4</a>。在线业务流量通常起伏很大，如果被这个问题困扰，可以考虑应用此patch。</li>
+<li>Storm UI中可以看到很多有用的信息，但是缺乏记录，最好对其进行二次开发（或者直接读取ZooKeeper中信息），记录每个时间段的数据，方便分析集群和拓扑运行状况。</li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Storm/" rel="tag"># Storm</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2015/05/18/hello-world-2/" rel="next" title="Hello world!">
+                <i class="fa fa-chevron-left"></i> Hello world!
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2016/12/14/docker-swarm-mode/" rel="prev" title="小试 Docker swarm mode">
+                小试 Docker swarm mode <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">Xingyu Su</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">categories</span>
+                
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                
+                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-name">tags</span>
+                
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#现象"><span class="nav-number">2.</span> <span class="nav-text">现象</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#排查"><span class="nav-number">3.</span> <span class="nav-text">排查</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Xingyu Su</span>
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a></div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

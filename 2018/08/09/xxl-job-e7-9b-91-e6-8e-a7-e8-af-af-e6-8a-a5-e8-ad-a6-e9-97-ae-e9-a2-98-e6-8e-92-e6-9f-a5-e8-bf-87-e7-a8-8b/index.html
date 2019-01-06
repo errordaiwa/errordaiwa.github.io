@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="DNS,Docker,Problem,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="背景 XXL-Job 是一套开源的任务调度框架，目前服务端部署了一套 XXL-Job 服务，用于监控线上服务质量 由于 Ucloud 出现过几次内网域名服务器故障，我们在 XXL-Job 中增加了定时任务监控第三方域名连通状态，并报警到钉钉群  问题描述 添加三方域名报警之后，钉钉群中经常收到报警，但是实际观察时，发现服务并无问题，报警为误报  排查过程 查看报警对应的执行脚本，核心代码如下 pi">
+<meta name="keywords" content="DNS,Docker,Problem">
+<meta property="og:type" content="article">
+<meta property="og:title" content="XXL-Job 监控误报警问题排查过程">
+<meta property="og:url" content="http://errordaiwa.github.io/2018/08/09/xxl-job-e7-9b-91-e6-8e-a7-e8-af-af-e6-8a-a5-e8-ad-a6-e9-97-ae-e9-a2-98-e6-8e-92-e6-9f-a5-e8-bf-87-e7-a8-8b/index.html">
+<meta property="og:site_name" content="Rick&#39;s lab">
+<meta property="og:description" content="背景 XXL-Job 是一套开源的任务调度框架，目前服务端部署了一套 XXL-Job 服务，用于监控线上服务质量 由于 Ucloud 出现过几次内网域名服务器故障，我们在 XXL-Job 中增加了定时任务监控第三方域名连通状态，并报警到钉钉群  问题描述 添加三方域名报警之后，钉钉群中经常收到报警，但是实际观察时，发现服务并无问题，报警为误报  排查过程 查看报警对应的执行脚本，核心代码如下 pi">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2019-01-06T05:20:35.852Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="XXL-Job 监控误报警问题排查过程">
+<meta name="twitter:description" content="背景 XXL-Job 是一套开源的任务调度框架，目前服务端部署了一套 XXL-Job 服务，用于监控线上服务质量 由于 Ucloud 出现过几次内网域名服务器故障，我们在 XXL-Job 中增加了定时任务监控第三方域名连通状态，并报警到钉钉群  问题描述 添加三方域名报警之后，钉钉群中经常收到报警，但是实际观察时，发现服务并无问题，报警为误报  排查过程 查看报警对应的执行脚本，核心代码如下 pi">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://errordaiwa.github.io/2018/08/09/xxl-job-e7-9b-91-e6-8e-a7-e8-af-af-e6-8a-a5-e8-ad-a6-e9-97-ae-e9-a2-98-e6-8e-92-e6-9f-a5-e8-bf-87-e7-a8-8b/">
+
+
+
+
+
+  <title>XXL-Job 监控误报警问题排查过程 | Rick's lab</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="default">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Rick's lab</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">c-137</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://errordaiwa.github.io/2018/08/09/xxl-job-e7-9b-91-e6-8e-a7-e8-af-af-e6-8a-a5-e8-ad-a6-e9-97-ae-e9-a2-98-e6-8e-92-e6-9f-a5-e8-bf-87-e7-a8-8b/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Xingyu Su">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Rick's lab">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">XXL-Job 监控误报警问题排查过程</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2018-08-09T12:58:33+08:00">
+                2018-08-09
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">In</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/categories/Tech/" itemprop="url" rel="index">
+                    <span itemprop="name">Tech</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><ul>
+<li><a href="https://github.com/xuxueli/xxl-job" target="_blank" rel="noopener">XXL-Job</a> 是一套开源的任务调度框架，目前服务端部署了一套 XXL-Job 服务，用于监控线上服务质量</li>
+<li>由于 Ucloud 出现过几次内网域名服务器故障，我们在 XXL-Job 中增加了定时任务监控第三方域名连通状态，并报警到钉钉群</li>
+</ul>
+<h2 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h2><ul>
+<li>添加三方域名报警之后，钉钉群中经常收到报警，但是实际观察时，发现服务并无问题，报警为误报</li>
+</ul>
+<h2 id="排查过程"><a href="#排查过程" class="headerlink" title="排查过程"></a>排查过程</h2><ul>
+<li><p>查看报警对应的执行脚本，核心代码如下</p>
+<pre><code>ping -c 5 target.com
+if (($? == 0))
+then
+    //正常
+else
+    //报警
+    exit 1;
+fi 
+</code></pre></li>
+</ul>
+<ul>
+<li><p>查看报警对应的脚本执行日志，发现如下报错</p>
+<pre><code>ping: unknown host
+</code></pre></li>
+</ul>
+<ul>
+<li><p>初步判断是域名解析有问题导致报警，使用 dig 和 nslookup 查看域名解析情况，结果正常返回。由于报警也是偶发，觉得可能是域名解析偶发失败导致 ping 命令报错</p>
+<pre><code>[work@monitor01 ~]$ nslookup target.com
+Server:       10.9.255.1
+Address:  10.9.255.1#53
+
+Non-authoritative answer:
+Name: target.com
+Address: xx.xx.xx.xx
+</code></pre></li>
+</ul>
+<ul>
+<li><p>在 XXL-Job 部署的机器上尝试复现问题，脚本如下。执行脚本，直到有报警时停止，查看日志，没有失败的情况</p>
+<pre><code>while true
+do
+  echo &quot;`date`============&quot;
+  ping -c1 target.com
+  echo &quot;result: $?&quot;
+done
+</code></pre></li>
+</ul>
+<ul>
+<li><p>在 XXL-Job 机器上观察 XXL-Job 进程，使用 <code>ps -elf</code> 命令追踪父进程。发现进程是运行在 Docker 容器中的</p>
+<pre><code>[work@monitor01 ~]$ ps -elf | grep 31525
+0 S root     31525  1689  0  80   0 - 86935 futex_ Jun29 ?        00:16:10 /usr/bin/docker-containerd-shim-current 6b0f5c6aa2f52318867466a327740711f7bbf540779ef92bb16ccf00494c6c5e /var/run/docker/libcontainerd/6b0f5c6aa2f52318867466a327740711f7bbf540779ef92bb16ccf00494c6c5e /usr/libexec/docker/docker-runc-current
+</code></pre></li>
+</ul>
+<ul>
+<li>容器和宿主机的网络环境是隔离的，所以 XXL-Job 报警时，宿主机上的脚本没有复现问题。于是在容器中继续执行脚本，尝试复现问题</li>
+<li><p>脚本执行几分钟后，在日志中观察到有报错的情况。这里注意到，报错的地方似乎花费的时间比较久</p>
+<pre><code>Mon Jul  2 08:30:35 UTC 2018============
+ping: unknown host
+result: 1
+Mon Jul  2 08:30:37 UTC 2018============
+</code></pre></li>
+</ul>
+<ul>
+<li><p>对脚本进行调整，记录调用时间</p>
+<pre><code>time ping -c1 target.com
+</code></pre></li>
+</ul>
+<ul>
+<li><p>重新执行脚本，发现报错时，ping 命令的调用花费了一秒左右的时间。感觉可能是 DNS 解析超时了。</p>
+<pre><code>Mon Jul  2 09:43:12 UTC 2018============
+ping: unknown host
+
+real    0m1.049s
+user    0m0.002s
+sys     0m0.002s
+result: 1
+</code></pre></li>
+</ul>
+<ul>
+<li><p>查看容器 DNS 解析配置</p>
+<pre><code>root@f9c78250c2a0:~# cat /etc/resolv.conf
+search xxx.com
+nameserver 127.0.0.11
+options timeout:1 attempts:1 rotate single-request-reopen ndots:0
+</code></pre></li>
+</ul>
+<ul>
+<li><p>通过 <code>man resolv.conf</code> 查阅 <code>resolv.conf</code> 参数的含义。发现容器内的 DNS 解析超时时间配置成了一秒，并且只尝试一次。DNS 使用 UDP 协议传输数据。UDP 协议设计上就是不可靠的，所以会存在丢包的情况，而且 DNS 解析需要去公网域名服务器请求数据，延迟也有不确定性。当 DNS 解析失败时，ping 命令就会报错，进入触发报警。</p>
+<pre><code>timeout:n
+  Sets the amount of time the resolver will wait for a response from a remote name server before retrying the query via a different name server.  Measured in seconds, the  default is RES_TIMEOUT (currently 5, see &lt;resolv.h&gt;).  The value for this option is silently capped to 30.
+
+attempts:n
+  Sets  the  number  of  times  the resolver will send a query to its name servers before giving up and returning an error to the calling application.  The default is RES_DFLRETRY (currently 2, see &lt;resolv.h&gt;).  The value for this option is silently capped to 5.
+</code></pre></li>
+</ul>
+<ul>
+<li><p>问题到这里基本定位完成，开始尝试解决问题。查阅 Docker 官方文档中关于<a href="https://docs.docker.com/config/containers/container-networking/#dns-services" target="_blank" rel="noopener">网络的配置</a>，发现可以通过 <code>dns_opt</code> 参数配置容器的 DNS 解析配置</p>
+<pre><code>--dns-opt A key-value pair representing a DNS option and its value. See your operating system’s documentation for resolv.conf for valid options.
+</code></pre></li>
+</ul>
+<ul>
+<li><p>修改容器配置，将 DNS 解析超时设置为 2s，重试一次。重启服务，观察半个小时，不再出现误报，问题解决</p>
+<pre><code>dns_opt:
+  - timeout:2
+  - attempts:2
+  - single-request
+  - rotate
+</code></pre></li>
+</ul>
+<h2 id="一句话总结"><a href="#一句话总结" class="headerlink" title="一句话总结"></a>一句话总结</h2><p>容器和宿主机 DNS 解析配置不同，导致容器内 ping 命令调用偶发失败，引发报警误报。通过 <code>dns_opt</code> 参数修改容器 DNS 超时时间和重试次数后，问题解决。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/DNS/" rel="tag"># DNS</a>
+          
+            <a href="/tags/Docker/" rel="tag"># Docker</a>
+          
+            <a href="/tags/Problem/" rel="tag"># Problem</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2016/12/14/docker-swarm-mode/" rel="next" title="小试 Docker swarm mode">
+                <i class="fa fa-chevron-left"></i> 小试 Docker swarm mode
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/01/05/hello-world/" rel="prev" title="Hello World">
+                Hello World <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">Xingyu Su</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">categories</span>
+                
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                
+                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-name">tags</span>
+                
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#问题描述"><span class="nav-number">2.</span> <span class="nav-text">问题描述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#排查过程"><span class="nav-number">3.</span> <span class="nav-text">排查过程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#一句话总结"><span class="nav-number">4.</span> <span class="nav-text">一句话总结</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Xingyu Su</span>
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a></div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
