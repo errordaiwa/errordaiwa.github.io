@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Rick&#39;s lab">
 <meta property="og:description" content="最近在公司尝试将测试环境 docker 化，由于组件比较多，考虑引入容器编排方案。首先尝试使用 docker-compose 来管理各个组件实例。可以跑通基本逻辑，但是目前没有服务发现框架，只能使用 docker 内置网络中的 DNS 发现其它服务，这限定了测试环境只能跑在单机环境上，时间久了各种 OOM。最近看到 docker 新版本附带的 swarm mode，尝试搭建了一套多机 docker">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2019-01-06T05:20:35.852Z">
+<meta property="og:updated_time" content="2019-01-07T04:56:21.201Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="小试 Docker swarm mode">
 <meta name="twitter:description" content="最近在公司尝试将测试环境 docker 化，由于组件比较多，考虑引入容器编排方案。首先尝试使用 docker-compose 来管理各个组件实例。可以跑通基本逻辑，但是目前没有服务发现框架，只能使用 docker 内置网络中的 DNS 发现其它服务，这限定了测试环境只能跑在单机环境上，时间久了各种 OOM。最近看到 docker 新版本附带的 swarm mode，尝试搭建了一套多机 docker">
@@ -323,11 +323,11 @@
 
       
         <p>最近在公司尝试将测试环境 docker 化，由于组件比较多，考虑引入容器编排方案。首先尝试使用 docker-compose 来管理各个组件实例。可以跑通基本逻辑，但是目前没有服务发现框架，只能使用 docker 内置网络中的 DNS 发现其它服务，这限定了测试环境只能跑在单机环境上，时间久了各种 OOM。最近看到 docker 新版本附带的 swarm mode，尝试搭建了一套多机 docker 环境，感觉很满足当前的需求，并且对代码基本零侵入。简单的记录了一下搭建过程以及一些注意事项。</p>
-<h3 id="Swarm-mode-简介"><a href="#Swarm-mode-简介" class="headerlink" title="Swarm mode 简介"></a>Swarm mode 简介</h3><h4 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h4><ul>
+<h2 id="Swarm-mode-简介"><a href="#Swarm-mode-简介" class="headerlink" title="Swarm mode 简介"></a>Swarm mode 简介</h2><h3 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h3><ul>
 <li>docker swarm 是 docker 官方编排项目之一，提供将多个 docker engine 实例变成一台虚拟 docker engine 实例的能力，便于 docker 容器集群管理</li>
 <li>docker 1.12 版本推出了 swarm mode 功能，将 docker swarm 深度集成到 docker engine 中，提供了整套更为简洁的 api 对 swarm 集群进行管理。相对于原生的 docker swarm，swarm mode 部署更为简单，无需外置的服务发现框架，并且提供了容器路由服务</li>
 </ul>
-<h4 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h4><ul>
+<h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><ul>
 <li>Node: node 是 swarm 集群中一个 docker engine 实例<ul>
 <li>Manager node: 对整体集群进行管理和编排，并维护整个集群</li>
 <li>Worker node: 接收 manager node 分配的 tasks，并运行，默认情况下，manager node 本身也作为一个 worker node 运行 task，可以通过改变配置让 manager node 变成一个 manager-only 的纯管理节点</li>
@@ -337,103 +337,45 @@
 <li>Service: 由一组同类型 task 聚合而成，是 swarm 集群中主要操作对象</li>
 <li>Load balancing: swarm 集群有一套内置的负载均衡策略提供外部访问到目标容器的路由，在创建 Service 时可以发布端口到外部网络上，访问 swarm 集群任意节点该端口的请求都会被路由到该 Service</li>
 </ul>
-<h3 id="Swarm-mode-quick-start"><a href="#Swarm-mode-quick-start" class="headerlink" title="Swarm mode quick start"></a>Swarm mode quick start</h3><h4 id="初始化-swarm-集群"><a href="#初始化-swarm-集群" class="headerlink" title="初始化 swarm 集群"></a>初始化 swarm 集群</h4><ol>
+<h2 id="Swarm-mode-quick-start"><a href="#Swarm-mode-quick-start" class="headerlink" title="Swarm mode quick start"></a>Swarm mode quick start</h2><h3 id="初始化-swarm-集群"><a href="#初始化-swarm-集群" class="headerlink" title="初始化 swarm 集群"></a>初始化 swarm 集群</h3><ol>
 <li>初始化机器，安装 docker-engine （版本需要高于 1.12）</li>
 <li><p>选择一台机器作为 swarm manager 节点，在 console 中运行 <code>docker swarm init</code> 创建 swarm 集群，命令会返回加入集群的命令</p>
-<pre><code>Swarm initialized: current node (c8dzd8xek2c9csoxj27ycl1nh) is now a manager.
-
-To add a worker to this swarm, run the following command:
-
-    docker swarm join \
-    --token SWMTKN-1-07bc8loetz13sy5eqv2t1uycqfr9dqabsd7x08gr22w7gj79fc-eiz5ljflasv65rnoq36aj2mfc \
-    192.168.65.2:2377
-
-To add a manager to this swarm, run &apos;docker swarm join-token manager&apos; and follow the instructions.
-</code></pre></li>
-</ol>
-<ol start="3">
+ <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Swarm initialized: current node     (c8dzd8xek2c9csoxj27ycl1nh) is     now a manager.</span><br><span class="line"></span><br><span class="line">To add a worker to this swarm,     run the following command:</span><br><span class="line"></span><br><span class="line">    docker swarm join \</span><br><span class="line">    --token SWMTKN-1-07bc8loetz13sy5eqv2t1uycqfr9dqabsd7x08gr22w7gj79fc-eiz5ljflasv65rnoq36aj2mfc \</span><br><span class="line">    192.168.65.2:2377</span><br><span class="line"></span><br><span class="line">To add a manager to this swarm,     run 'docker swarm join-token     manager' and follow the     instructions.</span><br></pre></td></tr></table></figure>
+</li>
 <li><p>在另一台机器上，运行提示中的命令加入集群，如果没有保存之前的提示，可以通过 <code>docker swarm join-token worker</code> 查询</p>
-<pre><code>docker swarm join \
-    --token SWMTKN-1-07bc8loetz13sy5eqv2t1uycqfr9dqabsd7x08gr22w7gj79fc-eiz5ljflasv65rnoq36aj2mfc \
-    192.168.65.2:2377
-</code></pre></li>
-</ol>
-<ol start="4">
+ <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">docker swarm join \</span><br><span class="line">    --token SWMTKN-1-07bc8loetz13sy5eqv2t1uycqfr9dqabsd7x08gr22w7gj79fc-eiz5ljflasv65rnoq36aj2mfc \</span><br><span class="line">    192.168.65.2:2377</span><br></pre></td></tr></table></figure>
+</li>
 <li><p>在 manager 节点上运行 <code>docker info</code> 可以看到 swarm 集群的信息</p>
-<pre><code>Swarm: active
- NodeID: c8dzd8xek2c9csoxj27ycl1nh
- Is Manager: true
- ClusterID: cj75fozp5effsiyuuq2dixv95
- Managers: 1
- Nodes: 2
- Orchestration:
-  Task History Retention Limit: 5
- Raft:
-  Snapshot Interval: 10000
-  Heartbeat Tick: 1
-  Election Tick: 3
- Dispatcher:
-  Heartbeat Period: 5 seconds
- CA Configuration:
-  Expiry Duration: 3 months
- Node Address: 192.168.65.2
-</code></pre></li>
+ <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">Swarm: active</span><br><span class="line"> NodeID: c8dzd8xek2c9csoxj27ycl1nh</span><br><span class="line"> Is Manager: true</span><br><span class="line"> ClusterID: cj75fozp5effsiyuuq2dixv95</span><br><span class="line"> Managers: 1</span><br><span class="line"> Nodes: 2</span><br><span class="line"> Orchestration:</span><br><span class="line">  Task History Retention Limit: 5</span><br><span class="line"> Raft:</span><br><span class="line">  Snapshot Interval: 10000</span><br><span class="line">  Heartbeat Tick: 1</span><br><span class="line">  Election Tick: 3</span><br><span class="line"> Dispatcher:</span><br><span class="line">  Heartbeat Period: 5 seconds</span><br><span class="line"> CA Configuration:</span><br><span class="line">  Expiry Duration: 3 months</span><br><span class="line"> Node Address: 192.168.65.2</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>在节点上运行 <code>docker swarm leave</code> 可以让当前节点离开集群，如果是管理节点，需要增加 <code>--force</code> 参数</p>
+</li>
 </ol>
-<ol start="5">
-<li>在节点上运行 <code>docker swarm leave</code> 可以让当前节点离开集群，如果是管理节点，需要增加 <code>--force</code> 参数</li>
-</ol>
-<h4 id="创建一个-service"><a href="#创建一个-service" class="headerlink" title="创建一个 service"></a>创建一个 service</h4><ol>
+<h3 id="创建一个-service"><a href="#创建一个-service" class="headerlink" title="创建一个 service"></a>创建一个 service</h3><ol>
 <li>在 manager 节点上运行命令 <code>docker service create --replicas 1 --name redis docker-registry-cn.easemob.com/redis</code>创建 redis 服务, <code>replicas</code> 参数指定该服务中的 task 数量<ul>
 <li>如果是私有 registry，需要在 manager 节点上执行 <code>docker login</code>，然后创建服务时，增加 <code>--with-registry-auth</code> 参数将认证信息发送到 worker 节点</li>
 </ul>
 </li>
 <li><p>在 manager 节点上运行 <code>docker service ls</code> 查看所有服务状态</p>
-<pre><code>ID            NAME   REPLICAS  IMAGE                                 COMMAND
-0nqfp11n2xgb  redis  1/1       docker-registry-cn.easemob.com/redis
-</code></pre></li>
-</ol>
-<ol start="3">
+ <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ID            NAME   REPLICAS      IMAGE                                     COMMAND</span><br><span class="line">0nqfp11n2xgb  redis  1/1           docker-registry-cn.easemob.    com/redis</span><br></pre></td></tr></table></figure>
+</li>
 <li><p>在 manager 节点上运行 <code>docker service ps redis</code> 查看 redis 服务状态</p>
-<pre><code>ID                         NAME     IMAGE                                 NODE  DESIRED STATE  CURRENT STATE         ERROR
-3qpkmxptn8o336h161183a0vz  redis.1  docker-registry-cn.easemob.com/redis  moby  Running        Running 17 hours ago
-</code></pre></li>
-</ol>
-<ol start="4">
-<li>在 manager 节点上运行 <code>docker service update redis</code> 更新服务。例如可以用 <code>docker service update redis --publish-add 6379:6379</code> 发布 redis 服务到 swarm 集群 6379 端口上（也可以在创建服务时使用 –publish 参数发布），在 swarm 任意节点上运行 <code>redis-cli</code> 都可以连接到 redis 服务</li>
+ <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ID                         NAME     IMAGE                                 NODE  DESIRED STATE  CURRENT STATE         ERROR</span><br><span class="line">3qpkmxptn8o336h161183a0vz  redis.1  docker-registry-cn.easemob.com/redis  moby  Running        Running 17 hours ago</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>在 manager 节点上运行 <code>docker service update redis</code> 更新服务。例如可以用 <code>docker service update redis --publish-add 6379:6379</code> 发布 redis 服务到 swarm 集群 6379 端口上（也可以在创建服务时使用 –publish 参数发布），在 swarm 任意节点上运行 <code>redis-cli</code> 都可以连接到 redis 服务</p>
+</li>
 <li>在 manager 节点上运行 <code>docker service rm redis</code> 可以删除服务</li>
 </ol>
-<h4 id="Service-间网络调用"><a href="#Service-间网络调用" class="headerlink" title="Service 间网络调用"></a>Service 间网络调用</h4><ul>
+<h3 id="Service-间网络调用"><a href="#Service-间网络调用" class="headerlink" title="Service 间网络调用"></a>Service 间网络调用</h3><ul>
 <li><p>如果 service publish 了端口，可以通过任意 swarm 节点 publish 端口进行调用</p>
-<pre><code>➜  ~ docker service update --publish-add 6379:6379 redis1
-redis1
-➜  ~ telnet localhost 6379
-Trying ::1...
-Connected to localhost.
-Escape character is &apos;^]&apos;.
-set test aaa
-+OK
-</code></pre></li>
-</ul>
-<ul>
+  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ docker service update     --publish-add 6379:6379 redis1</span><br><span class="line">redis1</span><br><span class="line">➜  ~ telnet localhost 6379</span><br><span class="line">Trying ::1...</span><br><span class="line">Connected to localhost.</span><br><span class="line">Escape character is '^]'.</span><br><span class="line">set test aaa</span><br><span class="line">+OK</span><br></pre></td></tr></table></figure>
+</li>
 <li><p>创建一个 overlay 的网络，创建服务时，通过 <code>--network</code> 参数连接到 overlay 网络上。通过内建的 DNS 服务，可以通过 service name 解析出 task IP</p>
-<pre><code>➜  ~ docker network create --driver overlay --subnet 10.0.10.0/24 sandbox
-e7q4c68ybbw7xhrkb0at47k00
-➜  ~ docker service create --with-registry-auth --replicas 1 --network sandbox --name redis1  docker-registry-cn.easemob.com/redis
-0dfqszxp925id4ma9blolyjmz
-➜  ~ docker service create --with-registry-auth --replicas 1 --network sandbox --name redis2  docker-registry-cn.easemob.com/redis
-c3khd0snpu13ixx8popuoludx
-➜  ~ docker ps
-CONTAINER ID        IMAGE                                         COMMAND                  CREATED             STATUS              PORTS               NAMES
-4c92e01d25fd        docker-registry-cn.easemob.com/redis:latest   &quot;/entrypoint.sh redis&quot;   12 seconds ago      Up 9 seconds        6379/tcp            redis2.1.4qbw5c0hawat5rr50hgzpxj7l
-c60b4659e768        docker-registry-cn.easemob.com/redis:latest   &quot;/entrypoint.sh redis&quot;   6 minutes ago       Up 6 minutes        6379/tcp            redis1.1.4pvn93a6i2n5teou41mddmlxr
-➜  ~ docker exec -it c60b4659e768 /bin/bash
-root@c60b4659e768:/data# ping redis2
-PING redis2 (10.0.10.4): 56 data bytes
-64 bytes from 10.0.10.4: icmp_seq=0 ttl=64 time=0.109 ms
-</code></pre></li>
+  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ docker network create --driver overlay --subnet 10.0.10.0/24 sandbox</span><br><span class="line">e7q4c68ybbw7xhrkb0at47k00</span><br><span class="line">➜  ~ docker service create --with-registry-auth --replicas 1 --network sandbox --name redis1  docker-registry-cn.easemob.com/redis</span><br><span class="line">0dfqszxp925id4ma9blolyjmz</span><br><span class="line">➜  ~ docker service create --with-registry-auth --replicas 1 --network sandbox --name redis2  docker-registry-cn.easemob.com/redis</span><br><span class="line">c3khd0snpu13ixx8popuoludx</span><br><span class="line">➜  ~ docker ps</span><br><span class="line">CONTAINER ID        IMAGE                                         COMMAND                  CREATED             STATUS              PORTS               NAMES</span><br><span class="line">4c92e01d25fd        docker-registry-cn.easemob.com/redis:latest   "/entrypoint.sh redis"   12 seconds ago      Up 9 seconds        6379/tcp            redis2.1.4qbw5c0hawat5rr50hgzpxj7l</span><br><span class="line">c60b4659e768        docker-registry-cn.easemob.com/redis:latest   "/entrypoint.sh redis"   6 minutes ago       Up 6 minutes        6379/tcp            redis1.1.4pvn93a6i2n5teou41mddmlxr</span><br><span class="line">➜  ~ docker exec -it c60b4659e768 /bin/bash</span><br><span class="line">root@c60b4659e768:/data# ping redis2</span><br><span class="line">PING redis2 (10.0.10.4): 56 data bytes</span><br><span class="line">64 bytes from 10.0.10.4: icmp_seq=0 ttl=64 time=0.109 ms</span><br></pre></td></tr></table></figure>
+</li>
 </ul>
-<h4 id="一些坑点"><a href="#一些坑点" class="headerlink" title="一些坑点"></a>一些坑点</h4><ul>
-<li>截止 docker 最新版本（1.12.3），在 overlay 网络中，以 VIP 方式启动的服务，无法通过 service name 跨机器调用，可以解析 DNS，但是无法连通到 IP，见 <a href="https://github.com/docker/docker/issues/25497" target="_blank" rel="noopener">https://github.com/docker/docker/issues/25497</a>。解决方案是启动模式换成 dnsrr （创建服务时增加参数 –endpoint-mode dnsrr），或者使用 tasks.${service_name} 的方式调用</li>
+<h3 id="一些坑点"><a href="#一些坑点" class="headerlink" title="一些坑点"></a>一些坑点</h3><ul>
+<li>截止 docker 最新版本（1.12.3），在 overlay 网络中，以 VIP 方式启动的服务，可以解析 DNS，但是无法 <code>ping</code> IP，某些依赖 <code>ping</code> 检查网络连通的程序会有问题，见 <a href="https://github.com/docker/docker/issues/25497" target="_blank" rel="noopener">https://github.com/docker/docker/issues/25497</a>。解决方案是启动模式换成 dnsrr （创建服务时增加参数 –endpoint-mode dnsrr），或者使用 tasks.${service_name} 的方式调用</li>
 <li>在某些操作系统（例如 Suse）上，service publish 的端口无法连接，原因不明，可能和缺少某些内核模块有关。建议使用 Centos7</li>
 <li>swarm manager 会在 service 中 task 退出时重新提交 task，某些需要一次性运行的 docker image （例如环境初始化脚本的执行）endpoint 或者 cmd 需要修改成 block 形式，以免退出后被重复提交。Docker 1.13 版本允许 <code>docker run</code> 启动的容器 attach 到 swarm service 使用的 network 上，可以将一次性运行的 image 直接以 <code>docker run</code> 的方式启动</li>
 <li><code>docker service update --image myimage:latest</code> 不会拉取新镜像，即使远端有更新的版本，只能通过手动拉取镜像后重启 service 来更新服务。这个 bug 会在 docker 1.13 上被修复</li>
@@ -471,8 +413,8 @@ PING redis2 (10.0.10.4): 56 data bytes
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2015/07/18/storm-cpu-overload/" rel="next" title="Storm在线业务实践-集群空闲CPU飙高问题排查">
-                <i class="fa fa-chevron-left"></i> Storm在线业务实践-集群空闲CPU飙高问题排查
+              <a href="/2015/07/18/storm-cpu-overload/" rel="next" title="Storm 在线业务实践-集群空闲 CPU 飙高问题排查">
+                <i class="fa fa-chevron-left"></i> Storm 在线业务实践-集群空闲 CPU 飙高问题排查
               </a>
             
           </div>
@@ -481,8 +423,8 @@ PING redis2 (10.0.10.4): 56 data bytes
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/2018/08/09/xxl-job-e7-9b-91-e6-8e-a7-e8-af-af-e6-8a-a5-e8-ad-a6-e9-97-ae-e9-a2-98-e6-8e-92-e6-9f-a5-e8-bf-87-e7-a8-8b/" rel="prev" title="XXL-Job 监控误报警问题排查过程">
-                XXL-Job 监控误报警问题排查过程 <i class="fa fa-chevron-right"></i>
+              <a href="/2018/08/09/xxl-job-e7-9b-91-e6-8e-a7-e8-af-af-e6-8a-a5-e8-ad-a6-e9-97-ae-e9-a2-98-e6-8e-92-e6-9f-a5-e8-bf-87-e7-a8-8b/" rel="prev" title="DNS 配置有误导致监控误报的问题排查">
+                DNS 配置有误导致监控误报的问题排查 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -560,7 +502,7 @@ PING redis2 (10.0.10.4): 56 data bytes
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-count">3</span>
                   <span class="site-state-item-name">posts</span>
                 </a>
               </div>
@@ -571,7 +513,7 @@ PING redis2 (10.0.10.4): 56 data bytes
               
               <div class="site-state-item site-state-categories">
                 
-                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-count">1</span>
                   <span class="site-state-item-name">categories</span>
                 
               </div>
@@ -615,7 +557,7 @@ PING redis2 (10.0.10.4): 56 data bytes
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Swarm-mode-简介"><span class="nav-number">1.</span> <span class="nav-text">Swarm mode 简介</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#背景"><span class="nav-number">1.1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#概念"><span class="nav-number">1.2.</span> <span class="nav-text">概念</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Swarm-mode-quick-start"><span class="nav-number">2.</span> <span class="nav-text">Swarm mode quick start</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#初始化-swarm-集群"><span class="nav-number">2.1.</span> <span class="nav-text">初始化 swarm 集群</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#创建一个-service"><span class="nav-number">2.2.</span> <span class="nav-text">创建一个 service</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Service-间网络调用"><span class="nav-number">2.3.</span> <span class="nav-text">Service 间网络调用</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#一些坑点"><span class="nav-number">2.4.</span> <span class="nav-text">一些坑点</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Swarm-mode-简介"><span class="nav-number">1.</span> <span class="nav-text">Swarm mode 简介</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#背景"><span class="nav-number">1.1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#概念"><span class="nav-number">1.2.</span> <span class="nav-text">概念</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Swarm-mode-quick-start"><span class="nav-number">2.</span> <span class="nav-text">Swarm mode quick start</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#初始化-swarm-集群"><span class="nav-number">2.1.</span> <span class="nav-text">初始化 swarm 集群</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#创建一个-service"><span class="nav-number">2.2.</span> <span class="nav-text">创建一个 service</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Service-间网络调用"><span class="nav-number">2.3.</span> <span class="nav-text">Service 间网络调用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一些坑点"><span class="nav-number">2.4.</span> <span class="nav-text">一些坑点</span></a></li></ol></li></ol></div>
             
 
           </div>

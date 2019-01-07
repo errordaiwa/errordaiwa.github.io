@@ -79,21 +79,23 @@
 
 
 
-<meta name="description" content="最近将公司的在线业务迁移到Storm集群上，上线后遇到低峰期CPU耗费严重的情况。在解决问题的过程中深入了解了storm的内部实现原理，并且解决了一个storm0.9-0.10版本一直存在的严重bug，目前代码已经合并到了storm新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。 背景首先简单介绍一下Storm，熟悉的同学可以直接跳过这段。 Storm是Twi">
+<meta name="description" content="最近将公司的在线业务迁移到 Storm 集群上，上线后遇到低峰期 CPU 耗费严重的情况。在解决问题的过程中深入了解了 Storm 的内部实现原理，并且解决了一个 Storm 0.9-0.10版本一直存在的严重 bug，目前代码已经合并到了 Storm 新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。 背景首先简单介绍一下 Storm，老司机可以直接跳过这段。">
 <meta name="keywords" content="Storm">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Storm在线业务实践-集群空闲CPU飙高问题排查">
+<meta property="og:title" content="Storm 在线业务实践-集群空闲 CPU 飙高问题排查">
 <meta property="og:url" content="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/index.html">
 <meta property="og:site_name" content="Rick&#39;s lab">
-<meta property="og:description" content="最近将公司的在线业务迁移到Storm集群上，上线后遇到低峰期CPU耗费严重的情况。在解决问题的过程中深入了解了storm的内部实现原理，并且解决了一个storm0.9-0.10版本一直存在的严重bug，目前代码已经合并到了storm新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。 背景首先简单介绍一下Storm，熟悉的同学可以直接跳过这段。 Storm是Twi">
+<meta property="og:description" content="最近将公司的在线业务迁移到 Storm 集群上，上线后遇到低峰期 CPU 耗费严重的情况。在解决问题的过程中深入了解了 Storm 的内部实现原理，并且解决了一个 Storm 0.9-0.10版本一直存在的严重 bug，目前代码已经合并到了 Storm 新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。 背景首先简单介绍一下 Storm，老司机可以直接跳过这段。">
 <meta property="og:locale" content="default">
-<meta property="og:image" content="http://xingyusu.com/wp-content/uploads/2015/07/storm.gif">
-<meta property="og:image" content="http://xingyusu.com/wp-content/uploads/2015/07/storm-messaging.png">
-<meta property="og:updated_time" content="2019-01-06T05:20:35.852Z">
+<meta property="og:image" content="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/images/storm.gif">
+<meta property="og:image" content="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/images/storm-messaging.png">
+<meta property="og:image" content="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/images/storm-simple.png">
+<meta property="og:image" content="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/images/Models.png">
+<meta property="og:updated_time" content="2019-01-07T04:33:49.621Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Storm在线业务实践-集群空闲CPU飙高问题排查">
-<meta name="twitter:description" content="最近将公司的在线业务迁移到Storm集群上，上线后遇到低峰期CPU耗费严重的情况。在解决问题的过程中深入了解了storm的内部实现原理，并且解决了一个storm0.9-0.10版本一直存在的严重bug，目前代码已经合并到了storm新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。 背景首先简单介绍一下Storm，熟悉的同学可以直接跳过这段。 Storm是Twi">
-<meta name="twitter:image" content="http://xingyusu.com/wp-content/uploads/2015/07/storm.gif">
+<meta name="twitter:title" content="Storm 在线业务实践-集群空闲 CPU 飙高问题排查">
+<meta name="twitter:description" content="最近将公司的在线业务迁移到 Storm 集群上，上线后遇到低峰期 CPU 耗费严重的情况。在解决问题的过程中深入了解了 Storm 的内部实现原理，并且解决了一个 Storm 0.9-0.10版本一直存在的严重 bug，目前代码已经合并到了 Storm 新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。 背景首先简单介绍一下 Storm，老司机可以直接跳过这段。">
+<meta name="twitter:image" content="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/images/storm.gif">
 
 
 
@@ -129,7 +131,7 @@
 
 
 
-  <title>Storm在线业务实践-集群空闲CPU飙高问题排查 | Rick's lab</title>
+  <title>Storm 在线业务实践-集群空闲 CPU 飙高问题排查 | Rick's lab</title>
   
 
 
@@ -253,7 +255,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">Storm在线业务实践-集群空闲CPU飙高问题排查</h1>
+          <h1 class="post-title" itemprop="name headline">Storm 在线业务实践-集群空闲 CPU 飙高问题排查</h1>
         
 
         <div class="post-meta">
@@ -325,153 +327,83 @@
       
 
       
-        <p>最近将公司的在线业务迁移到Storm集群上，上线后遇到低峰期CPU耗费严重的情况。在解决问题的过程中深入了解了storm的内部实现原理，并且解决了一个storm0.9-0.10版本一直存在的严重bug，目前代码已经合并到了storm新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。</p>
-<h3 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h3><p>首先简单介绍一下Storm，熟悉的同学可以直接跳过这段。 Storm是Twitter开源的一个大数据处理框架，专注于流式数据的处理。Storm通过创建拓扑结构（Topology）来转换数据流。和Hadoop的作业（Job）不同，Topology会持续转换数据，除非被集群关闭。 下图是一个简单的Storm Topology结构图。 <img src="http://xingyusu.com/wp-content/uploads/2015/07/storm.gif" alt="topology"> 可以看出Topology是由不同组件（Component）串/并联形成的有向图。数据元组（Tuple）会在Component之间通过数据流的形式进行有向传递。Component有两种</p>
+        <p>最近将公司的在线业务迁移到 Storm 集群上，上线后遇到低峰期 CPU 耗费严重的情况。在解决问题的过程中深入了解了 Storm 的内部实现原理，并且解决了一个 Storm 0.9-0.10版本一直存在的严重 bug，目前代码已经合并到了 Storm 新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。</p>
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>首先简单介绍一下 Storm，老司机可以直接跳过这段。 Storm 是 Twitter 开源的一个大数据处理框架，专注于流式数据的处理。Storm通过创建拓扑结构（Topology）来转换数据流。和 Hadoop 的作业（Job）不同，Topology 会持续转换数据，除非被集群关闭。 下图是一个简单的 Storm Topology 结构图。</p>
+<p><img src="images/storm.gif" alt="topology"></p>
+<p>可以看出Topology是由不同组件（Component）串/并联形成的有向图。数据元组（Tuple）会在Component之间通过数据流的形式进行有向传递。Component有两种</p>
 <ul>
-<li>Spout：Tuple来源节点，持续不断的产生Tuple，形成数据流</li>
-<li>Bolt：Tuple处理节点，处理收到的Tuple，如果有需要，也可以生成新的Tuple传递到其他Bolt</li>
+<li>Spout：Tuple 来源节点，持续不断的产生Tuple，形成数据流</li>
+<li>Bolt：Tuple 处理节点，处理收到的 Tuple，如果有需要，也可以生成新的 Tuple 传递到其他 Bolt</li>
 </ul>
-<p>目前业界主要在离线或者对实时性要求不高业务中使用Storm。随着Storm版本的更迭，可靠性和实时性在逐渐增强，已经有运行在线业务的能力。因此我们尝试将一些实时性要求在百毫秒级的在线业务迁入Storm集群。</p>
-<h3 id="现象"><a href="#现象" class="headerlink" title="现象"></a>现象</h3><ol>
-<li>某次高峰时，Storm上的一个业务拓扑频繁出现消息处理延迟。延时达到了10s甚至更高。查看高峰时的物理机指标监控，CPU、内存和IO都有很大的余量。判断是随着业务增长，服务流量逐渐增加，某个Bolt之前设置的并行度不够，导致消息堆积了。</li>
-<li>临时增加该Bolt并行度，解决了延迟的问题，但是第二天的低峰期，服务突然报警，CPU负载过高，达到了100%。</li>
+<p>目前业界主要在离线或者对实时性要求不高业务中使用 Storm。随着 Storm 版本的更迭，可靠性和实时性在逐渐增强，已经有运行在线业务的能力。因此我们尝试将一些实时性要求在百毫秒级的在线业务迁入Storm 集群。</p>
+<h2 id="现象"><a href="#现象" class="headerlink" title="现象"></a>现象</h2><ol>
+<li>某次高峰时，Storm 上的一个业务拓扑频繁出现消息处理延迟。延时达到了 10s 甚至更高。查看高峰时的物理机指标监控，CPU、内存和 IO 都有很大的余量。判断是随着业务增长，服务流量逐渐增加，某个 Bolt 之前设置的并行度不够，导致消息堆积了。</li>
+<li>临时增加该 Bolt 并行度，解决了延迟的问题，但是第二天的低峰期，服务突然报警，CPU 负载过高，达到了 100%。</li>
 </ol>
-<h3 id="排查"><a href="#排查" class="headerlink" title="排查"></a>排查</h3><ol>
-<li><p>用Top看了下CPU占用，系统调用占用了70%左右。再用<a href="https://github.com/qdaxb/wtool" target="_blank" rel="noopener">wtool</a>对Storm的工作进程进行分析，找到了CPU占用最高的线程</p>
-<pre><code>java.lang.Thread.State: TIMED_WAITING (parking)
-        at sun.misc.Unsafe.park(Native Method)
-        - parking to wait for  &lt;0x0000000640a248f8&gt; (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
-        at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:215)
-        at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2163)
-        at com.lmax.disruptor.BlockingWaitStrategy.waitFor(BlockingWaitStrategy.java:87)
-        at com.lmax.disruptor.ProcessingSequenceBarrier.waitFor(ProcessingSequenceBarrier.java:54)
-        at backtype.storm.utils.DisruptorQueue.consumeBatchWhenAvailable(DisruptorQueue.java:97)
-        at backtype.storm.disruptor$consume_batch_when_available.invoke(disruptor.clj:80)
-        at backtype.storm.daemon.executor$fn__3441$fn__3453$fn__3500.invoke(executor.clj:748)
-        at backtype.storm.util$async_loop$fn__464.invoke(util.clj:463)
-        at clojure.lang.AFn.run(AFn.java:24)
-        at java.lang.Thread.run(Thread.java:745)
-</code></pre></li>
-</ol>
-<pre><code>我们可以看到这些线程都在信号量上等待。调用的来源是disruptor$consume\_batch\_when_available。
-</code></pre><ol start="2">
-<li><p>disruptor是Storm内部消息队列的封装。所以先了解了一下Storm内部的消息传输机制。<img src="http://xingyusu.com/wp-content/uploads/2015/07/storm-messaging.png" alt="Storm内部消息传输机制">（图片来源<a href="http://www.michael-noll.com/blog/2013/06/21/understanding-storm-internal-message-buffers/" target="_blank" rel="noopener">Understanding the Internal Message Buffers of Storm</a>）Storm的工作节点称为Worker（其实就是一个JVM进程）。不同Worker之间通过Netty（旧版Storm使用ZeroMQ）进行通讯。每个Worker内部包含一组Executor。Strom会为拓扑中的每个Component都分配一个Executor。在实际的数据处理流程中，数据以消息的形式在Executor之间流转。Executor会循环调用绑定的Component的处理方法来处理收到的消息。 Executor之间的消息传输使用队列作为消息管道。Storm会给每个Executor分配两个队列和两个处理线程。</p>
+<h2 id="排查"><a href="#排查" class="headerlink" title="排查"></a>排查</h2><ol>
+<li><p>用 Top 看了下 CPU 占用，系统调用占用了 70% 左右。再用 <a href="https://github.com/qdaxb/wtool" target="_blank" rel="noopener">wtool</a> 对 Storm 的工作进程进行分析，找到了 CPU 占用最高的线程</p>
+ <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">java.lang.Thread.State: TIMED_WAITING (parking)</span><br><span class="line">at sun.misc.Unsafe.park(Native Method)</span><br><span class="line">- parking to wait <span class="keyword">for</span>  &lt;<span class="number">0x0000000640a248f8</span>&gt; (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)</span><br><span class="line">at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:<span class="number">215</span>)</span><br><span class="line">at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:<span class="number">2163</span>)</span><br><span class="line">at com.lmax.disruptor.BlockingWaitStrategy.waitFor(BlockingWaitStrategy.java:<span class="number">87</span>)</span><br><span class="line">at com.lmax.disruptor.ProcessingSequenceBarrier.waitFor(ProcessingSequenceBarrier.java:<span class="number">54</span>)</span><br><span class="line">at backtype.storm.utils.DisruptorQueue.consumeBatchWhenAvailable(DisruptorQueue.java:<span class="number">97</span>)</span><br><span class="line">at backtype.storm.disruptor$consume_batch_when_available.invoke(disruptor.clj:<span class="number">80</span>)</span><br><span class="line">at backtype.storm.daemon.executor$fn__3441$fn__3453$fn__3500.invoke(executor.clj:<span class="number">748</span>)</span><br><span class="line">at backtype.storm.util$async_loop$fn__464.invoke(util.clj:<span class="number">463</span>)</span><br><span class="line">at clojure.lang.AFn.run(AFn.java:<span class="number">24</span>)</span><br><span class="line">at java.lang.Thread.run(Thread.java:<span class="number">745</span>)</span><br></pre></td></tr></table></figure>
+<p> 我们可以看到这些线程都在信号量上等待。调用的来源是 <code>disruptor$consume_batch_when_available</code>。</p>
+</li>
+<li><p>disruptor 是 Storm 内部消息队列的封装。所以先了解了一下 Storm 内部的消息传输机制。</p>
+<p> <img src="images/storm-messaging.png" alt="Storm内部消息传输机制">（图片来源<a href="http://www.michael-noll.com/blog/2013/06/21/understanding-storm-internal-message-buffers/" target="_blank" rel="noopener">Understanding the Internal Message Buffers of Storm</a>）</p>
+<p> Storm 的工作节点称为 Worker（其实就是一个JVM 进程）。不同 Worker 之间通过 Netty（旧版 Storm 使用 ZeroMQ）进行通讯。每个Worker 内部包含一组 Executor。Storm 会为拓扑中的每个 Component 都分配一个 Executor。在实际的数据处理流程中，数据以消息的形式在 Executor 之间流转。Executor 会循环调用绑定的 Component 的处理方法来处理收到的消息。 Executor 之间的消息传输使用队列作为消息管道。Storm 会给每个 Executor 分配两个队列和两个处理线程。</p>
 <ul>
 <li>工作线程：读取接收队列，对消息进行处理，如果产生新的消息，会写入发送队列</li>
-<li>发送线程：读取发送队列，将消息发送其他Executor</li>
-</ul>
+<li><p>发送线程：读取发送队列，将消息发送其他Executor</p>
 <p>当Executor的发送线程发送消息时，会判断目标Executor是否在同一Worker内，如果是，则直接将消息写入目标Executor的接收队列，如果不是，则将消息写入Worker的传输队列，通过网络发送。 Executor工作/发送线程读取队列的代码如下，这里会循环调用consume-batch-when-available读取队列中的消息，并对消息进行处理。</p>
-<pre><code>(async-loop
-  (fn []
-    ...
-    (disruptor/consume-batch-when-available receive-queue event-handler)            
-    ...
-    ))
-</code></pre></li>
-</ol>
-<ol start="3">
-<li><p>我们再来看一下consume_batch_when_available这个函数里做了什么。</p>
-<pre><code>(defn consume-batch-when-available
-  [^DisruptorQueue queue handler]
-  (.consumeBatchWhenAvailable queue handler))
-</code></pre></li>
-</ol>
-<pre><code>前面提到Storm使用队列作为消息管道。Storm作为流式大数据处理框架，对消息传输的性能很敏感，因此使用了高效内存队列Disruptor Queue作为消息队列。 ![storm-simple](http://xingyusu.com/wp-content/uploads/2015/07/storm-simple.png) Disruptor Queue是LMAX开源的一个无锁内存队列。内部实现如下。 ![Disruptor queue](http://xingyusu.com/wp-content/uploads/2015/07/Models.png)（图片来源[Disruptor queue Introduction](https://github.com/LMAX-Exchange/disruptor/wiki/Introduction)） Disruptor Queue通过Sequencer来管理队列，Sequencer内部使用RingBuffer存储消息。RingBuffer中消息的位置使用Sequence表示。队列的生产消费过程如下
-
-*   Sequencer使用一个Cursor来保存写入位置。
-*   每个Consumer都会维护一个消费位置，并注册到Sequencer。
-*   Consumer通过SequenceBarrier和Sequencer进行交互。Consumer每次消费时，SequenceBarrier会比较消费位置和Cursor来判断是否有可用消息：如果没有，**会按照设定的策略等待消息**；如果有，则读取消息，修改消费位置。
-*   Producer在写入前会查看所有消费者的消费位置，在有可用位置时会写入消息，更新Cursor。
-
-查看DisruptorQueue.consumeBatchWhenAvailable实现如下
-
-    final long nextSequence = _consumer.get() + 1;
-    final long availableSequence = _barrier.waitFor(nextSequence, 10, TimeUnit.MILLISECONDS);
-    if (availableSequence &gt;= nextSequence) {
-        consumeBatchToCursor(availableSequence, handler);
-    }
-
-
-继续查看_barrier.waitFor方法
-
-    public long waitFor(final long sequence, final long timeout, final TimeUnit units) throws AlertException, InterruptedException {
-        checkAlert();
-        return waitStrategy.waitFor(sequence, cursorSequence, dependentSequences, this, timeout, units);
-    }
-
-
-Disruptor Queue为消费者提供了若干种消息等待策略
-
-*   BlockingWaitStrategy：阻塞等待，CPU占用小，但是会切换线程，延迟较高
-*   BusySpinWaitStrategy：自旋等待，CPU占用高，但是无需切换线程，延迟低
-*   YieldingWaitStrategy：先自旋等待，然后使用Thread.yield()唤醒其他线程，CPU占用和延迟比较均衡
-*   SleepingWaitStrategy：先自旋，然后Thread.yield()，最后调用LockSupport.parkNanos(1L)，CPU占用和延迟比较均衡
-
-Storm的默认等待策略为BlockingWaitStrategy。BlockingWaitStrategy的waitFor函数实现如下
-
-    if ((availableSequence = cursor.get()) &lt; sequence) {
-            lock.lock();
-            try {
-                ++numWaiters;
-                while ((availableSequence = cursor.get()) &lt; sequence) {
-                    barrier.checkAlert();
-
-                    if (!processorNotifyCondition.await(timeout, sourceUnit)) {
-                        break;
-                    }
-                }
-            }
-            finally {
-                --numWaiters;
-                lock.unlock();
-            }
-    }
-
-
-BlockingWaitStrategy内部使用信号量来阻塞Consumer，当await超时后，Consumer线程会被自动唤醒，继续循环查询可用消息。
-</code></pre><ol start="4">
-<li>而DisruptorQueue.consumeBatchWhenAvailable方法中可以看到，Storm此处设置超时为10ms。推测在没有消息或者消息量较少时，Executor在消费队列时会被阻塞，由于超时时间很短，工作线程会频繁超时，consumeBatchWhenAvailable会被频繁调用，导致CPU占用飙高。尝试将10ms修改成100ms，编译Storm后重新部署集群，使用Storm的demo拓扑，将bolt并发度调到1000，修改spout代码为10s发一条消息。经测试CPU占用大幅减少。再将100ms改成1s，测试CPU占用基本降为零。</li>
-<li><p>但是随着调高超时，测试时并没有发现消息处理有延时。继续查看BlockingWaitStrategy代码，发现Disruptor Queu的Producer在写入消息后会唤醒等待的Consumer。</p>
-<pre><code>if (0 != numWaiters)
-{
-    lock.lock();
-    try
-    {
-        processorNotifyCondition.signalAll();
-    }
-    finally
-    {
-        lock.unlock();
-    }
-}
-</code></pre></li>
-</ol>
-<pre><code>这样，Storm的10ms超时就很奇怪了，没有减少消息延时，反而增加了系统负载。带着这个疑问查看代码的上下文，发现在构造DisruptorQueue对象时有这么一句注释
-
-    ;; :block strategy requires using a timeout on waitFor (implemented in DisruptorQueue), 
-            as sometimes the consumer stays blocked even when there&apos;s an item on the queue.
-    (defnk disruptor-queue
-        [^String queue-name buffer-size :claim-strategy :multi-threaded :wait-strategy :block]
-        (DisruptorQueue. queue-name
-                    ((CLAIM-STRATEGY claim-strategy) buffer-size)
-                    (mk-wait-strategy wait-strategy)))
-
-
-Storm使用的Disruptor Queue版本为2.10.1。查看Disruptor Queue的change log，发现该版本的BlockingWaitStrategy有潜在的并发问题，可能导致某条消息在写入时没有唤醒等待的消费者。
-
-&gt; 2.10.2 Released (21-Aug-2012)
-&gt; 
-&gt; *   Bug fix, potential race condition in BlockingWaitStrategy.
-&gt; *   Bug fix set initial SequenceGroup value to -1 (Issue #27).
-&gt; *   Deprecate timeout methods that will be removed in version 3.
-
-因此Storm使用了短超时，这样在出现并发问题时，没有被唤醒的消费方也会很快因为超时重新查询可用消息，防止出现消息延时。 这样如果直接修改超时到1000ms，一旦出现并发问题，最坏情况下消息会延迟1000ms。在权衡性能和延时之后，我们在Storm的配置文件中增加配置项来修改超时参数。这样使用者可以自己选择保证低延时还是低CPU占用率。
-</code></pre><ol start="6">
-<li>就BlockingWaitStrategy的潜在并发问题咨询了Disruptor Queue的作者，得知2.10.4版本已经修复了这个并发问题（<a href="https://github.com/LMAX-Exchange/disruptor/issues/119" target="_blank" rel="noopener">Race condition in 2.10.1 release</a> ）。将Storm依赖升级到此版本。但是对Disruptor Queue的2.10.1做了并发测试，无法复现这个并发问题，因此也无法确定2.10.4是否彻底修复。谨慎起见，在升级依赖的同时保留了之前的超时配置项，并将默认超时调整为1000ms。经测试，在集群空闲时CPU占用正常，并且压测也没有出现消息延时。</li>
+<figure class="highlight clojure"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">(<span class="name">async-loop</span></span><br><span class="line">  (<span class="name"><span class="builtin-name">fn</span></span> []</span><br><span class="line">    ...</span><br><span class="line">    (<span class="name">disruptor/consume-batch-when-available</span> receive-queue event-handler)</span><br><span class="line">  ...</span><br><span class="line">))</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+<li><p>我们再来看一下 <code>consume_batch_when_available</code> 这个函数里做了什么。</p>
+ <figure class="highlight clojure"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">(<span class="name"><span class="builtin-name">defn</span></span> consume-batch-when-available</span><br><span class="line">  [<span class="comment">^DisruptorQueue</span> queue handler]</span><br><span class="line">  (<span class="name">.consumeBatchWhenAvailable</span> queue handler))</span><br></pre></td></tr></table></figure>
+<p> 前面提到 Storm 使用队列作为消息管道。Storm 作为流式大数据处理框架，对消息传输的性能很敏感，因此使用了高效内存队列 Disruptor Queue 作为消息队列。</p>
+<p> <img src="images/storm-simple.png" alt="storm-simple"></p>
+<p> Disruptor Queue 是 LMAX 开源的一个无锁内存队列。内部实现如下。</p>
+<p> <img src="images/Models.png" alt="Disruptor queue"><br> （图片来源 <a href="https://github.com/LMAX-Exchange/disruptor/wiki/Introduction" target="_blank" rel="noopener">Disruptor queue Introduction</a>)</p>
+<p> Disruptor Queue 通过 Sequencer 来管理队列，Sequencer 内部使用 RingBuffer 存储消息。RingBuffer 中消息的位置使用 Sequence 表示。队列的生产消费过程如下</p>
+<ul>
+<li>Sequencer使用一个Cursor来保存写入位置。</li>
+<li>每个Consumer都会维护一个消费位置，并注册到Sequencer。</li>
+<li>Consumer通过SequenceBarrier和Sequencer进行交互。Consumer每次消费时，SequenceBarrier会比较消费位置和Cursor来判断是否有可用消息：如果没有，<strong>会按照设定的策略等待消息</strong>；如果有，则读取消息，修改消费位置。</li>
+<li><p>Producer在写入前会查看所有消费者的消费位置，在有可用位置时会写入消息，更新Cursor。</p>
+<p>查看 <code>DisruptorQueue.consumeBatchWhenAvailable</code> 实现如下</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">final</span> <span class="keyword">long</span> nextSequence = _consumer.get() + <span class="number">1</span>;</span><br><span class="line"><span class="keyword">final</span> <span class="keyword">long</span> availableSequence = _barrier.waitFor(nextSequence, <span class="number">10</span>, TimeUnit.MILLISECONDS);</span><br><span class="line"><span class="keyword">if</span> (availableSequence &gt;= nextSequence) &#123;</span><br><span class="line">    consumeBatchToCursor(availableSequence, handler);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>继续查看 <code>_barrier.waitFor</code> 方法</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">long</span> <span class="title">waitFor</span><span class="params">(<span class="keyword">final</span> <span class="keyword">long</span> sequence, <span class="keyword">final</span> <span class="keyword">long</span> timeout, <span class="keyword">final</span> TimeUnit units)</span> <span class="keyword">throws</span> AlertException, InterruptedException </span>&#123;</span><br><span class="line">    checkAlert();</span><br><span class="line">    <span class="keyword">return</span> waitStrategy.waitFor(sequence, cursorSequence, dependentSequences, <span class="keyword">this</span>, timeout, units);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Disruptor Queue 为消费者提供了若干种消息等待策略</p>
+</li>
+<li><code>BlockingWaitStrategy</code>：阻塞等待，CPU 占用小，但是会切换线程，延迟较高</li>
+<li><code>BusySpinWaitStrategy</code>：自旋等待，CPU 占用高，但是无需切换线程，延迟低</li>
+<li><code>YieldingWaitStrategy</code>：先自旋等待，然后使用 Thread.yield() 唤醒其他线程，CPU 占用和延迟比较均衡</li>
+<li><p><code>SleepingWaitStrategy</code>：先自旋，然后<code>Thread.yield()</code>，最后调用 <code>LockSupport.parkNanos(1L)</code>，CPU 占用和延迟比较均衡<br>Storm 的默认等待策略为 <code>BlockingWaitStrategy</code>。<code>BlockingWaitStrategy</code> 的 <code>waitFor</code> 函数实现如下</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">if ((availableSequence = cursor.get()) &lt; sequence) &#123;</span><br><span class="line">        lock.lock();</span><br><span class="line">        try &#123;</span><br><span class="line">            ++numWaiters;</span><br><span class="line">            while ((availableSequence = cursor.get()) &lt; sequence) &#123;</span><br><span class="line">                barrier.checkAlert();</span><br><span class="line"></span><br><span class="line">                if (!processorNotifyCondition.await(timeout, sourceUnit)) &#123;</span><br><span class="line">                    break;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        finally &#123;</span><br><span class="line">            --numWaiters;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>BlockingWaitStrategy</code> 内部使用信号量来阻塞 Consumer，当 await 超时后，Consumer 线程会被自动唤醒，继续循环查询可用消息。</p>
+</li>
+</ul>
+</li>
+<li>而<code>DisruptorQueue.consumeBatchWhenAvailable</code> 方法中可以看到，Storm 此处设置超时为 10ms。推测在没有消息或者消息量较少时，Executor 在消费队列时会被阻塞，由于超时时间很短，工作线程会频繁超时，<code>consumeBatchWhenAvailable</code> 会被频繁调用，导致 CPU 占用飙高。尝试将 10ms 修改成 100ms，编译 Storm 后重新部署集群，使用 Storm 的 demo 拓扑，将 bolt 并发度调到 1000，修改 spout 代码为 10s 发一条消息。经测试 CPU 占用大幅减少。再将 100ms 改成 1s，测试 CPU 占用基本降为零。</li>
+<li><p>但是随着调高超时，测试时并没有发现消息处理有延时。继续查看 <code>BlockingWaitStrategy</code> 代码，发现 Disruptor Queue 的 Producer 在写入消息后会唤醒等待的 Consumer。</p>
+ <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (<span class="number">0</span> != numWaiters)</span><br><span class="line">&#123;</span><br><span class="line">    lock.lock();</span><br><span class="line">    <span class="keyword">try</span></span><br><span class="line">    &#123;</span><br><span class="line">        processorNotifyCondition.signalAll();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">finally</span></span><br><span class="line">    &#123;</span><br><span class="line">        lock.unlock();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> 这样，Storm 的 10ms 超时就很奇怪了，没有减少消息延时，反而增加了系统负载。带着这个疑问查看代码的上下文，发现在构造 <code>DisruptorQueue</code> 对象时有这么一句注释</p>
+ <figure class="highlight clojure"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">;; :block strategy requires using a     timeout on waitFor (implemented in     DisruptorQueue), </span></span><br><span class="line">        as sometimes the consumer stays blocked even when there's an item on the queue.</span><br><span class="line">(<span class="name">defnk</span> disruptor-queue</span><br><span class="line">    [<span class="comment">^String</span> queue-name buffer-size <span class="symbol">:claim-strategy</span> <span class="symbol">:multi-threaded</span> <span class="symbol">:wait-strategy</span> <span class="symbol">:block</span>]</span><br><span class="line">    (<span class="name">DisruptorQueue.</span> queue-name</span><br><span class="line">                ((<span class="name">CLAIM-STRATEGY</span> claim-strategy) buffer-size)</span><br><span class="line">                (<span class="name">mk-wait-strategy</span> wait-strategy)))</span><br></pre></td></tr></table></figure>
+<p> Storm 使用的 Disruptor Queue 版本为2.10.1。查看 Disruptor Queue 的change log，发现该版本的 <code>BlockingWaitStrategy</code> 有潜在的并发问题，可能导致某条消息在写入时没有唤醒等待的消费者。</p>
+<blockquote>
+<p>2.10.2 Released (21-Aug-2012)</p>
+<ul>
+<li>Bug fix, potential race     condition in BlockingWaitStrategy.</li>
+<li>Bug fix set initial     SequenceGroup value to -1 (Issue     #27).</li>
+<li>Deprecate timeout methods that will be removed in version 3.</li>
+</ul>
+</blockquote>
+<p> 因此 Storm 使用了短超时，这样在出现并发问题时，没有被唤醒的消费方也会很快因为超时重新查询可用消息，防止出现消息延时。 这样如果直接修改超时到 1000ms，一旦出现并发问题，最坏情况下消息会延迟 1000ms。在权衡性能和延时之后，我们在 Storm 的配置文件中增加配置项来修改超时参数。这样使用者可以自己选择保证低延时还是低 CPU 占用率。</p>
+</li>
+<li>就 <code>BlockingWaitStrategy</code> 的潜在并发问题咨询了Disruptor Queue的作者，得知2.10.4版本已经修复了这个并发问题（<a href="https://github.com/LMAX-Exchange/disruptor/issues/119" target="_blank" rel="noopener">Race condition in 2.10.1 release</a> ）。将 Storm 依赖升级到此版本。但是对 Disruptor Queue 的 2.10.1 做了并发测试，无法复现这个并发问题，因此也无法确定 2.10.4 是否彻底修复。谨慎起见，在升级依赖的同时保留了之前的超时配置项，并将默认超时调整为 1000ms。经测试，在集群空闲时 CPU 占用正常，并且压测也没有出现消息延时。</li>
 </ol>
 <h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
 <li>关于集群空闲CPU反而飙高的问题，已经向Storm社区提交PR并且已被接受<a href="https://github.com/apache/storm/pull/630" target="_blank" rel="noopener">[STORM-935] Update Disruptor queue version to 2.10.4</a>。在线业务流量通常起伏很大，如果被这个问题困扰，可以考虑应用此patch。</li>
-<li>Storm UI中可以看到很多有用的信息，但是缺乏记录，最好对其进行二次开发（或者直接读取ZooKeeper中信息），记录每个时间段的数据，方便分析集群和拓扑运行状况。</li>
+<li>Storm UI 中可以看到很多有用的信息，但是缺乏记录，最好对其进行二次开发（或者直接读取 ZooKeeper 中信息），记录每个时间段的数据，方便分析集群和拓扑运行状况。</li>
 </ol>
 
       
@@ -502,10 +434,6 @@ Storm使用的Disruptor Queue版本为2.10.1。查看Disruptor Queue的change lo
       
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
-            
-              <a href="/2015/05/18/hello-world-2/" rel="next" title="Hello world!">
-                <i class="fa fa-chevron-left"></i> Hello world!
-              </a>
             
           </div>
 
@@ -592,7 +520,7 @@ Storm使用的Disruptor Queue版本为2.10.1。查看Disruptor Queue的change lo
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-count">3</span>
                   <span class="site-state-item-name">posts</span>
                 </a>
               </div>
@@ -603,7 +531,7 @@ Storm使用的Disruptor Queue版本为2.10.1。查看Disruptor Queue的change lo
               
               <div class="site-state-item site-state-categories">
                 
-                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-count">1</span>
                   <span class="site-state-item-name">categories</span>
                 
               </div>
@@ -647,7 +575,7 @@ Storm使用的Disruptor Queue版本为2.10.1。查看Disruptor Queue的change lo
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#现象"><span class="nav-number">2.</span> <span class="nav-text">现象</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#排查"><span class="nav-number">3.</span> <span class="nav-text">排查</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#现象"><span class="nav-number">2.</span> <span class="nav-text">现象</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#排查"><span class="nav-number">3.</span> <span class="nav-text">排查</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">3.1.</span> <span class="nav-text">总结</span></a></li></ol></li></ol></div>
             
 
           </div>
