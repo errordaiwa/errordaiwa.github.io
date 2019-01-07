@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Rick&#39;s lab">
 <meta property="og:description" content="背景 XXL-Job 是一套开源的任务调度框架，目前服务端部署了一套 XXL-Job 服务，用于监控线上服务质量 由于 Ucloud 出现过几次内网域名服务器故障，我们在 XXL-Job 中增加了定时任务监控第三方域名连通状态，并报警到钉钉群  问题描述 添加三方域名报警之后，钉钉群中经常收到报警，但是实际观察时，发现服务并无问题，报警为误报  排查过程 查看报警对应的执行脚本，核心代码如下">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2019-01-07T05:15:03.041Z">
+<meta property="og:updated_time" content="2019-01-07T05:53:15.651Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="DNS 配置有误导致监控误报的问题排查">
 <meta name="twitter:description" content="背景 XXL-Job 是一套开源的任务调度框架，目前服务端部署了一套 XXL-Job 服务，用于监控线上服务质量 由于 Ucloud 出现过几次内网域名服务器故障，我们在 XXL-Job 中增加了定时任务监控第三方域名连通状态，并报警到钉钉群  问题描述 添加三方域名报警之后，钉钉群中经常收到报警，但是实际观察时，发现服务并无问题，报警为误报  排查过程 查看报警对应的执行脚本，核心代码如下">
@@ -136,7 +136,7 @@
 
 
 
-</head>
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
 
 <body itemscope="" itemtype="http://schema.org/WebPage" lang="default">
 
@@ -331,42 +331,93 @@
 </ul>
 <h2 id="排查过程"><a href="#排查过程" class="headerlink" title="排查过程"></a>排查过程</h2><ul>
 <li><p>查看报警对应的执行脚本，核心代码如下</p>
-  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">ping -c 5 target.com</span><br><span class="line">if (($? == 0))</span><br><span class="line">then</span><br><span class="line">    //正常</span><br><span class="line">else</span><br><span class="line">    //报警</span><br><span class="line">    exit 1;</span><br><span class="line">fi</span><br></pre></td></tr></table></figure>
+<pre class=" language-bash"><code class="language-bash">  <span class="token function">ping</span> -c 5 target.com
+  <span class="token keyword">if</span> <span class="token variable"><span class="token punctuation">((</span>$<span class="token operator">?</span> <span class="token operator">==</span> <span class="token number">0</span><span class="token punctuation">))</span></span>
+  <span class="token keyword">then</span>
+      //正常
+  <span class="token keyword">else</span>
+      //报警
+      <span class="token keyword">exit</span> 1<span class="token punctuation">;</span>
+  <span class="token keyword">fi</span>
+</code></pre>
 </li>
 <li><p>查看报警对应的脚本执行日志，发现如下报错</p>
-  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ping: unknown host</span><br></pre></td></tr></table></figure>
+<pre class=" language-bash"><code class="language-bash">  ping: unknown host
+</code></pre>
 </li>
 <li><p>初步判断是域名解析有问题导致报警，使用 <code>dig</code> 和 <code>nslookup</code> 查看域名解析情况，结果正常返回。由于报警也是偶发，觉得可能是域名解析偶发失败导致 <code>ping</code> 命令报错</p>
-  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[work@monitor01 ~]$ nslookup    target.com</span><br><span class="line">Server:       10.9.255.1</span><br><span class="line">Address:  10.9.255.1#53</span><br><span class="line"></span><br><span class="line">Non-authoritative answer:</span><br><span class="line">Name: target.com</span><br><span class="line">Address: xx.xx.xx.xx</span><br></pre></td></tr></table></figure>
+<pre class=" language-bash"><code class="language-bash">  <span class="token punctuation">[</span>work@monitor01 ~<span class="token punctuation">]</span>$ <span class="token function">nslookup</span> target.com
+  Server:       10.9.255.1
+  Address:  10.9.255.1<span class="token comment" spellcheck="true">#53</span>
+
+  Non-authoritative answer:
+  Name: target.com
+  Address: xx.xx.xx.xx
+</code></pre>
 </li>
 <li><p>在 XXL-Job 部署的机器上尝试复现问题，脚本如下。执行脚本，直到有报警时停止，查看日志，没有失败的情况</p>
-  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">while true</span><br><span class="line">do</span><br><span class="line">  echo "`date`============"</span><br><span class="line">  ping -c1 target.com</span><br><span class="line">  echo "result: $?"</span><br><span class="line">done</span><br></pre></td></tr></table></figure>
+<pre class=" language-bash"><code class="language-bash">  <span class="token keyword">while</span> <span class="token boolean">true</span>
+  <span class="token keyword">do</span>
+    <span class="token keyword">echo</span> <span class="token string">"<span class="token variable"><span class="token variable">`</span><span class="token function">date</span><span class="token variable">`</span></span>============"</span>
+    <span class="token function">ping</span> -c1 target.com
+    <span class="token keyword">echo</span> <span class="token string">"result: <span class="token variable">$?</span>"</span>
+  <span class="token keyword">done</span>
+</code></pre>
 </li>
 <li><p>在 XXL-Job 机器上观察 XXL-Job 进程，使用 <code>ps -elf</code> 命令追踪父进程。发现进程是运行在 Docker 容器中的</p>
-  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[work@monitor01 ~]$ ps -elf |    grep 31525</span><br><span class="line">0 S root     31525  1689  0  80      0 - 86935 futex_ Jun29 ?           00:16:10    /usr/bin/docker-containerd-shim    current    6b0f5c6aa2f52318867466a32774071    f7bbf540779ef92bb16ccf00494c6c5    /var/run/docker/libcontainerd/6    0f5c6aa2f52318867466a327740711f    bbf540779ef92bb16ccf00494c6c5e    /usr/libexec/docker/docker-runc-current</span><br></pre></td></tr></table></figure>
+<pre class=" language-bash"><code class="language-bash">  <span class="token punctuation">[</span>work@monitor01 ~<span class="token punctuation">]</span>$ <span class="token function">ps</span> -elf <span class="token operator">|</span> <span class="token function">grep</span> 31525
+  0 S root     31525  1689  0  80      0 - 86935 futex_ Jun29 ?           00:16:10    /usr/bin/docker-containerd-shim    current    6b0f5c6aa2f52318867466a32774071    f7bbf540779ef92bb16ccf00494c6c5    /var/run/docker/libcontainerd/6    0f5c6aa2f52318867466a327740711f    bbf540779ef92bb16ccf00494c6c5e    /usr/libexec/docker/docker-runc-current
+</code></pre>
 </li>
 <li><p>容器和宿主机的网络环境是隔离的，所以 XXL-Job 报警时，宿主机上的脚本没有复现问题。于是在容器中继续执行脚本，尝试复现问题</p>
 </li>
 <li><p>脚本执行几分钟后，在日志中观察到有报错的情况。这里注意到，报错的地方似乎花费的时间比较久</p>
-  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Mon Jul  2 08:30:35 UTC     2018============</span><br><span class="line">ping: unknown host</span><br><span class="line">result: 1</span><br><span class="line">Mon Jul  2 08:30:37 UTC     2018============</span><br></pre></td></tr></table></figure>
+<pre class=" language-bash"><code class="language-bash">  Mon Jul  2 08:30:35 UTC     2018<span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span>
+  ping: unknown host
+  result: 1
+  Mon Jul  2 08:30:37 UTC     2018<span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span>
+</code></pre>
 </li>
 <li><p>对脚本进行调整，记录调用时间</p>
-  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">time ping -c1 target.com</span><br></pre></td></tr></table></figure>
+<pre class=" language-bash"><code class="language-bash">  <span class="token function">time</span> <span class="token function">ping</span> -c1 target.com
+</code></pre>
 </li>
 <li><p>重新执行脚本，发现报错时，<code>ping</code> 命令的调用花费了一秒左右的时间。感觉可能是 DNS 解析超时了。</p>
-  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Mon Jul  2 09:43:12 UTC     2018============</span><br><span class="line">ping: unknown host</span><br><span class="line"></span><br><span class="line">real    0m1.049s</span><br><span class="line">user    0m0.002s</span><br><span class="line">sys     0m0.002s</span><br><span class="line">result: 1</span><br></pre></td></tr></table></figure>
+<pre class=" language-bash"><code class="language-bash">  Mon Jul  2 09:43:12 UTC     2018<span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span>
+  ping: unknown host
+
+  real    0m1.049s
+  user    0m0.002s
+  sys     0m0.002s
+  result: 1
+</code></pre>
 </li>
 <li><p>查看容器 DNS 解析配置</p>
-  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">root@f9c78250c2a0:~# cat        /etc/resolv.conf</span><br><span class="line">search xxx.com</span><br><span class="line">nameserver 127.0.0.11</span><br><span class="line">options timeout:1 attempts:1        rotate single-request-reopen        ndots:0</span><br></pre></td></tr></table></figure>
+<pre class=" language-bash"><code class="language-bash">  root@f9c78250c2a0:~<span class="token comment" spellcheck="true"># cat        /etc/resolv.conf</span>
+  search xxx.com
+  nameserver 127.0.0.11
+  options timeout:1 attempts:1        rotate single-request-reopen        ndots:0
+</code></pre>
 </li>
 <li><p>通过 <code>man resolv.conf</code> 查阅 <code>resolv.conf</code> 参数的含义。发现容器内的 DNS 解析超时时间配置成了一秒，并且只尝试一次。DNS 使用 UDP 协议传输数据。UDP 协议设计上就是不可靠的，所以会存在丢包的情况，而且 DNS 解析需要去公网域名服务器请求数据，延迟也有不确定性。当 DNS 解析失败时，<code>ping</code> 命令就会报错，进而触发报警。</p>
-  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">timeout:n</span><br><span class="line">  Sets the amount of time the resolver will wait for a response from a remote name server before retrying the query via a different name server.  Measured in seconds, the  default is RES_TIMEOUT (currently 5, see &lt;resolv.h&gt;).  The value for this option is silently capped to 30.</span><br><span class="line"></span><br><span class="line">attempts:n</span><br><span class="line">  Sets  the  number  of  times  the resolver will send a query to its name servers before giving up and returning an error to the calling application.  The default is RES_DFLRETRY (currently 2, see &lt;resolv.h&gt;).  The value for this option is silently capped to 5.</span><br></pre></td></tr></table></figure>
+<pre class=" language-properties"><code class="language-properties"><span class="token attr-name">  timeout</span><span class="token punctuation">:</span><span class="token attr-value">n</span>
+<span class="token attr-name">    Sets</span> <span class="token attr-value">the amount of time the resolver will wait for a response from a remote name server before retrying the query via a different name server.  Measured in seconds, the  default is RES_TIMEOUT (currently 5, see &lt;resolv.h>).  The value for this option is silently capped to 30.</span>
+
+<span class="token attr-name">  attempts</span><span class="token punctuation">:</span><span class="token attr-value">n</span>
+<span class="token attr-name">    Sets</span> <span class="token attr-value"> the  number  of  times  the resolver will send a query to its name servers before giving up and returning an error to the calling application.  The default is RES_DFLRETRY (currently 2, see &lt;resolv.h>).  The value for this option is silently capped to 5.</span>
+</code></pre>
 </li>
 <li><p>问题到这里基本定位完成，开始尝试解决问题。查阅 Docker 官方文档中关于<a href="https://docs.docker.com/config/containers/container-networking/#dns-services" target="_blank" rel="noopener">网络的配置</a>，发现可以通过 <code>dns_opt</code> 参数配置容器的 DNS 解析配置</p>
-  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">--dns-opt A key-value pair representing a DNS option and its value. See your operating system’s documentation for resolv.conf for valid options.</span><br></pre></td></tr></table></figure>
+<pre class=" language-bash"><code class="language-bash">  --dns-opt A key-value pair representing a DNS option and its value. See your operating system’s documentation <span class="token keyword">for</span> resolv.conf <span class="token keyword">for</span> valid options.
+</code></pre>
 </li>
 <li><p>修改容器配置，将 DNS 解析超时设置为 2s，重试一次。重启服务，观察半个小时，不再出现误报，问题解决</p>
-  <figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">dns_opt:</span></span><br><span class="line"><span class="attr">  - timeout:</span><span class="number">2</span></span><br><span class="line"><span class="attr">  - attempts:</span><span class="number">2</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">single-request</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">rotate</span></span><br></pre></td></tr></table></figure>
+<pre class=" language-yaml"><code class="language-yaml">  <span class="token key atrule">dns_opt</span><span class="token punctuation">:</span>
+    <span class="token punctuation">-</span> timeout<span class="token punctuation">:</span><span class="token number">2</span>
+    <span class="token punctuation">-</span> attempts<span class="token punctuation">:</span><span class="token number">2</span>
+    <span class="token punctuation">-</span> single<span class="token punctuation">-</span>request
+    <span class="token punctuation">-</span> rotate
+</code></pre>
 </li>
 </ul>
 <h2 id="一句话总结"><a href="#一句话总结" class="headerlink" title="一句话总结"></a>一句话总结</h2><p>容器和宿主机 DNS 解析配置不同，导致容器内 ping 命令调用偶发失败，引发报警误报。通过 <code>dns_opt</code> 参数修改容器 DNS 超时时间和重试次数后，问题解决。</p>
