@@ -81,7 +81,7 @@
 
 <meta property="og:type" content="website">
 <meta property="og:title" content="Rick&#39;s lab">
-<meta property="og:url" content="http://errordaiwa.github.io/index.html">
+<meta property="og:url" content="https//xingyusu.com/index.html">
 <meta property="og:site_name" content="Rick&#39;s lab">
 <meta property="og:locale" content="default">
 <meta name="twitter:card" content="summary">
@@ -115,7 +115,7 @@
 
 
 
-  <link rel="canonical" href="http://errordaiwa.github.io/">
+  <link rel="canonical" href="https//xingyusu.com/">
 
 
 
@@ -229,7 +229,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://errordaiwa.github.io/2018/08/09/dns_config_problem/">
+    <link itemprop="mainEntityOfPage" href="https//xingyusu.com/2018/08/09/dns_config_problem/">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="Xingyu Su">
@@ -393,10 +393,10 @@
 </code></pre>
 </li>
 <li><p>查看容器 DNS 解析配置</p>
-<pre class=" language-bash"><code class="language-bash">  root@f9c78250c2a0:~<span class="token comment" spellcheck="true"># cat        /etc/resolv.conf</span>
+<pre class=" language-bash"><code class="language-bash">  root@f9c78250c2a0:~<span class="token comment" spellcheck="true"># cat /etc/resolv.conf</span>
   search xxx.com
   nameserver 127.0.0.11
-  options timeout:1 attempts:1        rotate single-request-reopen        ndots:0
+  options timeout:1 attempts:1 rotate single-request-reopen ndots:0
 </code></pre>
 </li>
 <li><p>通过 <code>man resolv.conf</code> 查阅 <code>resolv.conf</code> 参数的含义。发现容器内的 DNS 解析超时时间配置成了一秒，并且只尝试一次。DNS 使用 UDP 协议传输数据。UDP 协议设计上就是不可靠的，所以会存在丢包的情况，而且 DNS 解析需要去公网域名服务器请求数据，延迟也有不确定性。当 DNS 解析失败时，<code>ping</code> 命令就会报错，进而触发报警。</p>
@@ -469,7 +469,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://errordaiwa.github.io/2016/12/14/docker-swarm-mode/">
+    <link itemprop="mainEntityOfPage" href="https//xingyusu.com/2016/12/14/docker-swarm-mode/">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="Xingyu Su">
@@ -669,7 +669,7 @@
 </code></pre>
 </li>
 </ul>
-<h3 id="一些坑点"><a href="#一些坑点" class="headerlink" title="一些坑点"></a>一些坑点</h3><ul>
+<h2 id="一些坑点"><a href="#一些坑点" class="headerlink" title="一些坑点"></a>一些坑点</h2><ul>
 <li>截止 docker 最新版本（1.12.3），在 overlay 网络中，以 VIP 方式启动的服务，可以解析 DNS，但是无法 <code>ping</code> IP，某些依赖 <code>ping</code> 检查网络连通的程序会有问题，见 <a href="https://github.com/docker/docker/issues/25497" target="_blank" rel="noopener">https://github.com/docker/docker/issues/25497</a>。解决方案是启动模式换成 dnsrr （创建服务时增加参数 –endpoint-mode dnsrr），或者使用 tasks.${service_name} 的方式调用</li>
 <li>在某些操作系统（例如 Suse）上，service publish 的端口无法连接，原因不明，可能和缺少某些内核模块有关。建议使用 Centos7</li>
 <li>swarm manager 会在 service 中 task 退出时重新提交 task，某些需要一次性运行的 docker image （例如环境初始化脚本的执行）endpoint 或者 cmd 需要修改成 block 形式，以免退出后被重复提交。Docker 1.13 版本允许 <code>docker run</code> 启动的容器 attach 到 swarm service 使用的 network 上，可以将一次性运行的 image 直接以 <code>docker run</code> 的方式启动</li>
@@ -724,7 +724,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/">
+    <link itemprop="mainEntityOfPage" href="https//xingyusu.com/2015/07/18/storm-cpu-overload/">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="Xingyu Su">
@@ -957,7 +957,7 @@
 </li>
 <li>就 <code>BlockingWaitStrategy</code> 的潜在并发问题咨询了Disruptor Queue的作者，得知2.10.4版本已经修复了这个并发问题（<a href="https://github.com/LMAX-Exchange/disruptor/issues/119" target="_blank" rel="noopener">Race condition in 2.10.1 release</a> ）。将 Storm 依赖升级到此版本。但是对 Disruptor Queue 的 2.10.1 做了并发测试，无法复现这个并发问题，因此也无法确定 2.10.4 是否彻底修复。谨慎起见，在升级依赖的同时保留了之前的超时配置项，并将默认超时调整为 1000ms。经测试，在集群空闲时 CPU 占用正常，并且压测也没有出现消息延时。</li>
 </ol>
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><ol>
 <li>关于集群空闲CPU反而飙高的问题，已经向Storm社区提交PR并且已被接受 <a href="https://github.com/apache/storm/pull/630" target="_blank" rel="noopener">[STORM-935] Update Disruptor queue version to 2.10.4</a>。在线业务流量通常起伏很大，如果被这个问题困扰，可以考虑应用此 patch。</li>
 <li>Storm UI 中可以看到很多有用的信息，但是缺乏记录，最好对其进行二次开发（或者直接读取 ZooKeeper 中信息），记录每个时间段的数据，方便分析集群和拓扑运行状况。</li>
 </ol>
@@ -1254,6 +1254,19 @@
 
 
 
+
+
+<!-- LOCAL: You can save these files to your site and update links -->
+    
+        
+        <link rel="stylesheet" href="https://aimingoo.github.io/gitmint/style/default.css">
+        <script src="https://aimingoo.github.io/gitmint/dist/gitmint.browser.js"></script>
+    
+<!-- END LOCAL -->
+
+    
+
+    
 
 
 

@@ -83,19 +83,19 @@
 <meta name="keywords" content="Storm">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Storm 在线业务实践-集群空闲 CPU 飙高问题排查">
-<meta property="og:url" content="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/index.html">
+<meta property="og:url" content="https//xingyusu.com/2015/07/18/storm-cpu-overload/index.html">
 <meta property="og:site_name" content="Rick&#39;s lab">
 <meta property="og:description" content="最近将公司的在线业务迁移到 Storm 集群上，上线后遇到低峰期 CPU 耗费严重的情况。在解决问题的过程中深入了解了 Storm 的内部实现原理，并且解决了一个 Storm 0.9-0.10版本一直存在的严重 bug，目前代码已经合并到了 Storm 新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。 背景首先简单介绍一下 Storm，老司机可以直接跳过这段。">
 <meta property="og:locale" content="default">
-<meta property="og:image" content="http://errordaiwa.github.io/images/storm.gif">
-<meta property="og:image" content="http://errordaiwa.github.io/images/storm-messaging.png">
-<meta property="og:image" content="http://errordaiwa.github.io/images/storm-simple.png">
-<meta property="og:image" content="http://errordaiwa.github.io/images/Models.png">
-<meta property="og:updated_time" content="2019-01-08T16:57:49.291Z">
+<meta property="og:image" content="/images/storm.gif">
+<meta property="og:image" content="/images/storm-messaging.png">
+<meta property="og:image" content="/images/storm-simple.png">
+<meta property="og:image" content="/images/Models.png">
+<meta property="og:updated_time" content="2019-01-08T18:02:05.096Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Storm 在线业务实践-集群空闲 CPU 飙高问题排查">
 <meta name="twitter:description" content="最近将公司的在线业务迁移到 Storm 集群上，上线后遇到低峰期 CPU 耗费严重的情况。在解决问题的过程中深入了解了 Storm 的内部实现原理，并且解决了一个 Storm 0.9-0.10版本一直存在的严重 bug，目前代码已经合并到了 Storm 新版本中，在这篇文章里会介绍这个问题出现的场景、分析思路、解决的方式和一些个人的收获。 背景首先简单介绍一下 Storm，老司机可以直接跳过这段。">
-<meta name="twitter:image" content="http://errordaiwa.github.io/images/storm.gif">
+<meta name="twitter:image" content="/images/storm.gif">
 
 
 
@@ -125,7 +125,7 @@
 
 
 
-  <link rel="canonical" href="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/">
+  <link rel="canonical" href="https//xingyusu.com/2015/07/18/storm-cpu-overload/">
 
 
 
@@ -238,7 +238,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://errordaiwa.github.io/2015/07/18/storm-cpu-overload/">
+    <link itemprop="mainEntityOfPage" href="https//xingyusu.com/2015/07/18/storm-cpu-overload/">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="Xingyu Su">
@@ -302,6 +302,16 @@
           
 
           
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2015/07/18/storm-cpu-overload/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count gitment-comments-count" data-xid="/2015/07/18/storm-cpu-overload/" itemprop="commentsCount"></span>
+                </a>
+              </span>
             
           
 
@@ -467,7 +477,7 @@
 </li>
 <li>就 <code>BlockingWaitStrategy</code> 的潜在并发问题咨询了Disruptor Queue的作者，得知2.10.4版本已经修复了这个并发问题（<a href="https://github.com/LMAX-Exchange/disruptor/issues/119" target="_blank" rel="noopener">Race condition in 2.10.1 release</a> ）。将 Storm 依赖升级到此版本。但是对 Disruptor Queue 的 2.10.1 做了并发测试，无法复现这个并发问题，因此也无法确定 2.10.4 是否彻底修复。谨慎起见，在升级依赖的同时保留了之前的超时配置项，并将默认超时调整为 1000ms。经测试，在集群空闲时 CPU 占用正常，并且压测也没有出现消息延时。</li>
 </ol>
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><ol>
 <li>关于集群空闲CPU反而飙高的问题，已经向Storm社区提交PR并且已被接受 <a href="https://github.com/apache/storm/pull/630" target="_blank" rel="noopener">[STORM-935] Update Disruptor queue version to 2.10.4</a>。在线业务流量通常起伏很大，如果被这个问题困扰，可以考虑应用此 patch。</li>
 <li>Storm UI 中可以看到很多有用的信息，但是缺乏记录，最好对其进行二次开发（或者直接读取 ZooKeeper 中信息），记录每个时间段的数据，方便分析集群和拓扑运行状况。</li>
 </ol>
@@ -537,6 +547,13 @@
 
 
           
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
 
   
 
@@ -641,7 +658,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#现象"><span class="nav-number">2.</span> <span class="nav-text">现象</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#排查"><span class="nav-number">3.</span> <span class="nav-text">排查</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">3.1.</span> <span class="nav-text">总结</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#现象"><span class="nav-number">2.</span> <span class="nav-text">现象</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#排查"><span class="nav-number">3.</span> <span class="nav-text">排查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol></div>
             
 
           </div>
@@ -818,6 +835,43 @@
 
 
 
+
+
+<!-- LOCAL: You can save these files to your site and update links -->
+    
+        
+        <link rel="stylesheet" href="https://aimingoo.github.io/gitmint/style/default.css">
+        <script src="https://aimingoo.github.io/gitmint/dist/gitmint.browser.js"></script>
+    
+<!-- END LOCAL -->
+
+    
+
+    
+      <script type="text/javascript">
+      function renderGitment(){
+        var gitment = new Gitmint({
+            id: window.location.pathname, 
+            owner: 'errordaiwa',
+            repo: 'https://github.com/errordaiwa/rick_lab_comment',
+            
+            lang: "" || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+            
+            oauth: {
+            
+            
+                client_secret: '850768f040fde2abab56a173cda84d5377b3baee',
+            
+                client_id: '2a925074cb835e032661'
+            }});
+        gitment.render('gitment-container');
+      }
+
+      
+      renderGitment();
+      
+      </script>
+    
 
 
 

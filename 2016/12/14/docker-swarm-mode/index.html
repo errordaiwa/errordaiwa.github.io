@@ -83,11 +83,11 @@
 <meta name="keywords" content="Docker,Swarm">
 <meta property="og:type" content="article">
 <meta property="og:title" content="小试 Docker swarm mode">
-<meta property="og:url" content="http://errordaiwa.github.io/2016/12/14/docker-swarm-mode/index.html">
+<meta property="og:url" content="https//xingyusu.com/2016/12/14/docker-swarm-mode/index.html">
 <meta property="og:site_name" content="Rick&#39;s lab">
 <meta property="og:description" content="最近在公司尝试将测试环境 docker 化，由于组件比较多，考虑引入容器编排方案。首先尝试使用 docker-compose 来管理各个组件实例。可以跑通基本逻辑，但是目前没有服务发现框架，只能使用 docker 内置网络中的 DNS 发现其它服务，这限定了测试环境只能跑在单机环境上，时间久了各种 OOM。最近看到 docker 新版本附带的 swarm mode，尝试搭建了一套多机 docker">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2019-01-08T16:57:49.290Z">
+<meta property="og:updated_time" content="2019-01-08T18:30:55.021Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="小试 Docker swarm mode">
 <meta name="twitter:description" content="最近在公司尝试将测试环境 docker 化，由于组件比较多，考虑引入容器编排方案。首先尝试使用 docker-compose 来管理各个组件实例。可以跑通基本逻辑，但是目前没有服务发现框架，只能使用 docker 内置网络中的 DNS 发现其它服务，这限定了测试环境只能跑在单机环境上，时间久了各种 OOM。最近看到 docker 新版本附带的 swarm mode，尝试搭建了一套多机 docker">
@@ -120,7 +120,7 @@
 
 
 
-  <link rel="canonical" href="http://errordaiwa.github.io/2016/12/14/docker-swarm-mode/">
+  <link rel="canonical" href="https//xingyusu.com/2016/12/14/docker-swarm-mode/">
 
 
 
@@ -233,7 +233,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://errordaiwa.github.io/2016/12/14/docker-swarm-mode/">
+    <link itemprop="mainEntityOfPage" href="https//xingyusu.com/2016/12/14/docker-swarm-mode/">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
       <meta itemprop="name" content="Xingyu Su">
@@ -297,6 +297,16 @@
           
 
           
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2016/12/14/docker-swarm-mode/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count gitment-comments-count" data-xid="/2016/12/14/docker-swarm-mode/" itemprop="commentsCount"></span>
+                </a>
+              </span>
             
           
 
@@ -429,7 +439,7 @@
 </code></pre>
 </li>
 </ul>
-<h3 id="一些坑点"><a href="#一些坑点" class="headerlink" title="一些坑点"></a>一些坑点</h3><ul>
+<h2 id="一些坑点"><a href="#一些坑点" class="headerlink" title="一些坑点"></a>一些坑点</h2><ul>
 <li>截止 docker 最新版本（1.12.3），在 overlay 网络中，以 VIP 方式启动的服务，可以解析 DNS，但是无法 <code>ping</code> IP，某些依赖 <code>ping</code> 检查网络连通的程序会有问题，见 <a href="https://github.com/docker/docker/issues/25497" target="_blank" rel="noopener">https://github.com/docker/docker/issues/25497</a>。解决方案是启动模式换成 dnsrr （创建服务时增加参数 –endpoint-mode dnsrr），或者使用 tasks.${service_name} 的方式调用</li>
 <li>在某些操作系统（例如 Suse）上，service publish 的端口无法连接，原因不明，可能和缺少某些内核模块有关。建议使用 Centos7</li>
 <li>swarm manager 会在 service 中 task 退出时重新提交 task，某些需要一次性运行的 docker image （例如环境初始化脚本的执行）endpoint 或者 cmd 需要修改成 block 形式，以免退出后被重复提交。Docker 1.13 版本允许 <code>docker run</code> 启动的容器 attach 到 swarm service 使用的 network 上，可以将一次性运行的 image 直接以 <code>docker run</code> 的方式启动</li>
@@ -508,6 +518,13 @@
 
 
           
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
 
   
 
@@ -612,7 +629,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Swarm-mode-简介"><span class="nav-number">1.</span> <span class="nav-text">Swarm mode 简介</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#背景"><span class="nav-number">1.1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#概念"><span class="nav-number">1.2.</span> <span class="nav-text">概念</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Swarm-mode-quick-start"><span class="nav-number">2.</span> <span class="nav-text">Swarm mode quick start</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#初始化-swarm-集群"><span class="nav-number">2.1.</span> <span class="nav-text">初始化 swarm 集群</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#创建一个-service"><span class="nav-number">2.2.</span> <span class="nav-text">创建一个 service</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Service-间网络调用"><span class="nav-number">2.3.</span> <span class="nav-text">Service 间网络调用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一些坑点"><span class="nav-number">2.4.</span> <span class="nav-text">一些坑点</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Swarm-mode-简介"><span class="nav-number">1.</span> <span class="nav-text">Swarm mode 简介</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#背景"><span class="nav-number">1.1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#概念"><span class="nav-number">1.2.</span> <span class="nav-text">概念</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Swarm-mode-quick-start"><span class="nav-number">2.</span> <span class="nav-text">Swarm mode quick start</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#初始化-swarm-集群"><span class="nav-number">2.1.</span> <span class="nav-text">初始化 swarm 集群</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#创建一个-service"><span class="nav-number">2.2.</span> <span class="nav-text">创建一个 service</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Service-间网络调用"><span class="nav-number">2.3.</span> <span class="nav-text">Service 间网络调用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#一些坑点"><span class="nav-number">3.</span> <span class="nav-text">一些坑点</span></a></li></ol></div>
             
 
           </div>
@@ -789,6 +806,43 @@
 
 
 
+
+
+<!-- LOCAL: You can save these files to your site and update links -->
+    
+        
+        <link rel="stylesheet" href="https://aimingoo.github.io/gitmint/style/default.css">
+        <script src="https://aimingoo.github.io/gitmint/dist/gitmint.browser.js"></script>
+    
+<!-- END LOCAL -->
+
+    
+
+    
+      <script type="text/javascript">
+      function renderGitment(){
+        var gitment = new Gitmint({
+            id: window.location.pathname, 
+            owner: 'errordaiwa',
+            repo: 'https://github.com/errordaiwa/rick_lab_comment',
+            
+            lang: "" || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+            
+            oauth: {
+            
+            
+                client_secret: '850768f040fde2abab56a173cda84d5377b3baee',
+            
+                client_id: '2a925074cb835e032661'
+            }});
+        gitment.render('gitment-container');
+      }
+
+      
+      renderGitment();
+      
+      </script>
+    
 
 
 
