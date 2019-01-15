@@ -105,10 +105,10 @@ date: 2018-08-09 12:58:33
 - 查看容器 DNS 解析配置
 
     ``` bash
-    root@f9c78250c2a0:~# cat        /etc/resolv.conf
+    root@f9c78250c2a0:~# cat /etc/resolv.conf
     search xxx.com
     nameserver 127.0.0.11
-    options timeout:1 attempts:1        rotate single-request-reopen        ndots:0
+    options timeout:1 attempts:1 rotate single-request-reopen ndots:0
     ```
 
 - 通过 `man resolv.conf` 查阅 `resolv.conf` 参数的含义。发现容器内的 DNS 解析超时时间配置成了一秒，并且只尝试一次。DNS 使用 UDP 协议传输数据。UDP 协议设计上就是不可靠的，所以会存在丢包的情况，而且 DNS 解析需要去公网域名服务器请求数据，延迟也有不确定性。当 DNS 解析失败时，`ping` 命令就会报错，进而触发报警。

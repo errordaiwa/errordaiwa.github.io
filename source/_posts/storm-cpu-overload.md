@@ -179,7 +179,7 @@ date: 2015-07-18 17:51:53
     因此 Storm 使用了短超时，这样在出现并发问题时，没有被唤醒的消费方也会很快因为超时重新查询可用消息，防止出现消息延时。 这样如果直接修改超时到 1000ms，一旦出现并发问题，最坏情况下消息会延迟 1000ms。在权衡性能和延时之后，我们在 Storm 的配置文件中增加配置项来修改超时参数。这样使用者可以自己选择保证低延时还是低 CPU 占用率。
 6. 就 `BlockingWaitStrategy` 的潜在并发问题咨询了Disruptor Queue的作者，得知2.10.4版本已经修复了这个并发问题（[Race condition in 2.10.1 release](https://github.com/LMAX-Exchange/disruptor/issues/119) ）。将 Storm 依赖升级到此版本。但是对 Disruptor Queue 的 2.10.1 做了并发测试，无法复现这个并发问题，因此也无法确定 2.10.4 是否彻底修复。谨慎起见，在升级依赖的同时保留了之前的超时配置项，并将默认超时调整为 1000ms。经测试，在集群空闲时 CPU 占用正常，并且压测也没有出现消息延时。
 
-### 总结
+## 总结
 
 1. 关于集群空闲CPU反而飙高的问题，已经向Storm社区提交PR并且已被接受 [[STORM-935] Update Disruptor queue version to 2.10.4](https://github.com/apache/storm/pull/630)。在线业务流量通常起伏很大，如果被这个问题困扰，可以考虑应用此 patch。
 2. Storm UI 中可以看到很多有用的信息，但是缺乏记录，最好对其进行二次开发（或者直接读取 ZooKeeper 中信息），记录每个时间段的数据，方便分析集群和拓扑运行状况。

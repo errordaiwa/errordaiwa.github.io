@@ -134,7 +134,7 @@ date: 2016-12-14 18:12:37
     64 bytes from 10.0.10.4: icmp_seq=0 ttl=64 time=0.109 ms
     ```
 
-### 一些坑点
+## 一些坑点
 
 - 截止 docker 最新版本（1.12.3），在 overlay 网络中，以 VIP 方式启动的服务，可以解析 DNS，但是无法 `ping` IP，某些依赖 `ping` 检查网络连通的程序会有问题，见 [https://github.com/docker/docker/issues/25497](https://github.com/docker/docker/issues/25497)。解决方案是启动模式换成 dnsrr （创建服务时增加参数 --endpoint-mode dnsrr），或者使用 tasks.${service_name} 的方式调用
 - 在某些操作系统（例如 Suse）上，service publish 的端口无法连接，原因不明，可能和缺少某些内核模块有关。建议使用 Centos7
